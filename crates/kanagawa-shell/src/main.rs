@@ -174,6 +174,9 @@ fn main() {
         .build();
 
     app.connect_startup(move |app| {
+        if let Some(settings) = gtk4::Settings::default() {
+            settings.set_gtk_application_prefer_dark_theme(true);
+        }
         // Load global Kanagawa CSS with priority above USER to guarantee pristine Dragon styling
         let provider = CssProvider::new();
         provider.load_from_data(theme::POPUP_CSS);

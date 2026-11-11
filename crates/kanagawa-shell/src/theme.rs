@@ -71,6 +71,8 @@ window.popup-window {
     margin: 0;
     border-radius: 6px;
     border: none;
+    background-image: none;
+    box-shadow: none;
     background-color: transparent;
     color: #737c73;
     font-size: 11px;
@@ -99,6 +101,8 @@ window.popup-window {
     padding: 0;
     border-radius: 10px;
     border: none;
+    background-image: none;
+    box-shadow: none;
     background-color: rgba(197, 201, 197, 0.06);
     color: #a6a69c;
     font-size: 14px;
@@ -122,6 +126,8 @@ window.popup-window {
     padding: 4px 12px;
     border-radius: 8px;
     border: 1px solid rgba(197, 201, 197, 0.12);
+    background-image: none;
+    box-shadow: none;
     background-color: rgba(197, 201, 197, 0.06);
     color: #87a987;
     font-size: 12px;

@@ -10,6 +10,7 @@ SKIP_PKGS=0
 SKIP_BUILD=0
 FETCH_MODEL=0
 WITH_GREETER=0
+WORKSPACES_PER_MON=""
 BACKUP_STAMP="$(date +%Y%m%d%H%M%S)"
 
 SILUETA_URL="https://github.com/danielgatis/rembg/releases/download/v0.0.0/silueta.onnx"
@@ -25,6 +26,7 @@ Options:
   --skip-build    Skip Cargo workspace and kanagawa-polkit compilation
   --fetch-model   Download silueta.onnx (~43 MB) if missing
   --with-greeter  Install and configure greetd + kanagawa-greeter (/etc/greetd/)
+  --workspaces N  Workspaces per monitor (1-9, default: 3)
   -h, --help      Show this help
 EOF
 }
@@ -36,6 +38,7 @@ while [[ $# -gt 0 ]]; do
         --skip-build)   SKIP_BUILD=1; shift ;;
         --fetch-model)  FETCH_MODEL=1; shift ;;
         --with-greeter) WITH_GREETER=1; shift ;;
+        --workspaces)   WORKSPACES_PER_MON="${2:-}"; shift 2 ;;
         -h|--help)      usage; exit 0 ;;
         *)              echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
@@ -297,6 +300,18 @@ for f in "$REPO_DIR"/config/hypr/config/*.lua "$REPO_DIR"/config/hypr/config/the
 done
 render_template "$REPO_DIR/config/hypr/hyprpaper.conf.template" "$HOME/.config/hypr/hyprpaper.conf" 1
 render_template "$REPO_DIR/config/hypr/profile.default" "$HOME/.config/hypr/profile" 1
+
+WS_COUNT_FILE="$HOME/.config/hypr/config/workspaces_count"
+if [[ -z "$WORKSPACES_PER_MON" && "$DRY_RUN" -eq 0 && ! -e "$WS_COUNT_FILE" && -t 0 ]]; then
+    read -rp "[kanagawa-desktop] Workspaces per monitor (1-9) [3]: " WORKSPACES_PER_MON || true
+fi
+if [[ -n "$WORKSPACES_PER_MON" && "$WORKSPACES_PER_MON" =~ ^[1-9]$ ]]; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] write %s -> %s\n' "$WORKSPACES_PER_MON" "$WS_COUNT_FILE"
+    else
+        printf '%s\n' "$WORKSPACES_PER_MON" > "$WS_COUNT_FILE"
+    fi
+fi
 
 # Ensure XDG user dirs & default wallpapers exist (non-destructive)
 if command -v xdg-user-dirs-update >/dev/null 2>&1 && [[ ! -d "$HOME/Pictures" ]]; then

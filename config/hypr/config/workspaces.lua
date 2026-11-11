@@ -4,22 +4,29 @@ if KANAGAWA_WORKSPACES_OVERRIDDEN then
     return
 end
 
+local per_monitor = 3
+local count_path = (os.getenv("HOME") or "") .. "/.config/hypr/config/workspaces_count"
+local cf = io.open(count_path, "r")
+if cf then
+    local v = tonumber(cf:read("*l"))
+    cf:close()
+    if v and v >= 1 and v <= 9 then
+        per_monitor = math.floor(v)
+    end
+end
+
 local has_secondary = MONITOR2 and MONITOR2 ~= "" and MONITOR2 ~= MONITOR1 and hl.get_monitor(MONITOR2) ~= nil
 
 if has_secondary then
-    hl.workspace_rule({ workspace = "1", monitor = MONITOR1, default = true, persistent = true })
-    hl.workspace_rule({ workspace = "2", monitor = MONITOR1, persistent = true })
-    hl.workspace_rule({ workspace = "3", monitor = MONITOR1, persistent = true })
-
-    hl.workspace_rule({ workspace = "4", monitor = MONITOR2, default = true, persistent = true })
-    hl.workspace_rule({ workspace = "5", monitor = MONITOR2, persistent = true })
-    hl.workspace_rule({ workspace = "6", monitor = MONITOR2, persistent = true })
+    for i = 1, per_monitor do
+        hl.workspace_rule({ workspace = tostring(i), monitor = MONITOR1, default = (i == 1), persistent = true })
+    end
+    for i = 1, per_monitor do
+        hl.workspace_rule({ workspace = tostring(per_monitor + i), monitor = MONITOR2, default = (i == 1), persistent = true })
+    end
     hl.workspace_rule({ workspace = "name:gaming", monitor = MONITOR2 })
 else
-    hl.workspace_rule({ workspace = "1", default = true, persistent = true })
-    hl.workspace_rule({ workspace = "2", persistent = true })
-    hl.workspace_rule({ workspace = "3", persistent = true })
-    hl.workspace_rule({ workspace = "4", persistent = true })
-    hl.workspace_rule({ workspace = "5", persistent = true })
-    hl.workspace_rule({ workspace = "6", persistent = true })
+    for i = 1, per_monitor do
+        hl.workspace_rule({ workspace = tostring(i), default = (i == 1), persistent = true })
+    end
 end
