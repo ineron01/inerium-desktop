@@ -49,8 +49,8 @@ fn get_bt_state() -> BtState {
     }
 
     // Check if controller is powered
-    let is_powered = Command::new("bluetoothctl")
-        .args(["--timeout", "2", "show"])
+    let is_powered = Command::new("timeout")
+        .args(["2", "bluetoothctl", "show"])
         .stdin(Stdio::null())
         .output()
         .map(|out| String::from_utf8_lossy(&out.stdout).contains("Powered: yes"))
@@ -61,8 +61,8 @@ fn get_bt_state() -> BtState {
     }
 
     // Check connected devices
-    if let Ok(output) = Command::new("bluetoothctl")
-        .args(["--timeout", "2", "devices", "Connected"])
+    if let Ok(output) = Command::new("timeout")
+        .args(["2", "bluetoothctl", "devices", "Connected"])
         .stdin(Stdio::null())
         .output()
     {

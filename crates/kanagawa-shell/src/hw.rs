@@ -837,9 +837,9 @@ pub fn is_bluetooth_enabled() -> bool {
         }
     }
 
-    // 2. Проверка bluetoothctl show с таймаутом (чтобы не зависать при мёртвом bluetoothd)
-    if let Ok(output) = Command::new("bluetoothctl")
-        .args(["--timeout", "2", "show"])
+    // 2. Проверка bluetoothctl show с внешним timeout (чтобы не зависать при мёртвом bluetoothd)
+    if let Ok(output) = Command::new("timeout")
+        .args(["2", "bluetoothctl", "show"])
         .stdin(Stdio::null())
         .output()
     {

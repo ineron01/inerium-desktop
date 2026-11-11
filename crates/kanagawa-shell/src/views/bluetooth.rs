@@ -34,8 +34,8 @@ pub fn query_devices() -> Vec<BtDevice> {
 
     // Query connected devices first
     let mut connected_macs = Vec::new();
-    if let Ok(out) = Command::new("bluetoothctl")
-        .args(["--timeout", "2", "devices", "Connected"])
+    if let Ok(out) = Command::new("timeout")
+        .args(["2", "bluetoothctl", "devices", "Connected"])
         .stdin(std::process::Stdio::null())
         .output()
     {
@@ -48,8 +48,8 @@ pub fn query_devices() -> Vec<BtDevice> {
         }
     }
 
-    if let Ok(out) = Command::new("bluetoothctl")
-        .args(["--timeout", "2", "devices"])
+    if let Ok(out) = Command::new("timeout")
+        .args(["2", "bluetoothctl", "devices"])
         .stdin(std::process::Stdio::null())
         .output()
     {
