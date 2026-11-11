@@ -29,7 +29,6 @@ wireplumber
 pavucontrol
 networkmanager
 iw
-network-manager-applet
 dnsmasq
 bluez
 bluez-utils
@@ -42,13 +41,11 @@ upower
 # Shell, Terminal, File Manager & Converter Backends
 fish
 kitty
-alacritty
 btop
 fastfetch
 gnome-text-editor
 gnome-calculator
 dolphin
-ark
 ffmpeg
 imagemagick
 poppler
@@ -64,7 +61,6 @@ adw-gtk-theme
 qt5ct
 qt6ct
 nwg-look
-nwg-displays
 gtk4
 gtk4-layer-shell
 libadwaita
