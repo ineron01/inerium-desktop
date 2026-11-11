@@ -21,7 +21,7 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   --dry-run       Print planned actions without modifying the system
-  --skip-pkgs     Skip pacman/paru package installation
+  --skip-pkgs     Skip paru package installation
   --skip-build    Skip Cargo workspace and kanagawa-polkit compilation
   --fetch-model   Download silueta.onnx (~43 MB) if missing
   --with-greeter  Install and configure greetd + kanagawa-greeter (/etc/greetd/)
@@ -127,30 +127,41 @@ install_sudoers_template() {
     rm -f "$tmp"
 }
 
+ensure_paru() {
+    if command -v paru >/dev/null 2>&1; then
+        return 0
+    fi
+    log "paru not found; installing paru..."
+    run "sudo pacman -Sy --needed --noconfirm base-devel git"
+    if pacman -Si paru >/dev/null 2>&1; then
+        run "sudo pacman -S --needed --noconfirm paru"
+    elif [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] git clone --depth 1 https://aur.archlinux.org/paru-bin.git <tmp> && makepkg -si --noconfirm\n'
+    else
+        local tmp_dir
+        tmp_dir="$(mktemp -d)"
+        trap 'rm -rf "$tmp_dir"' RETURN
+        git clone --depth 1 https://aur.archlinux.org/paru-bin.git "$tmp_dir/paru-bin"
+        (cd "$tmp_dir/paru-bin" && makepkg -si --noconfirm)
+    fi
+}
+
+install_pkglist() {
+    local pkglist="$1"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] paru -S --needed --noconfirm - < %s\n' "$pkglist"
+    else
+        grep -vE '^\s*(#|$)' "$pkglist" | paru -S --needed --noconfirm -
+    fi
+}
+
 # 1. Install base packages
 if [[ "$SKIP_PKGS" -eq 0 ]]; then
+    ensure_paru
     log "Installing base packages from pkglist-base.txt..."
-    if ! command -v paru >/dev/null 2>&1 && ! command -v yay >/dev/null 2>&1; then
-        if pacman -Si paru >/dev/null 2>&1; then
-            run "sudo pacman -Sy --needed --noconfirm paru"
-        fi
-    fi
-    PKGS=$(grep -vE '^\s*(#|$)' "$REPO_DIR/pkglist-base.txt" | tr '\n' ' ')
-    if command -v paru >/dev/null 2>&1; then
-        run "paru -Sy --needed --noconfirm $PKGS"
-    elif command -v yay >/dev/null 2>&1; then
-        run "yay -Sy --needed --noconfirm $PKGS"
-    else
-        run "sudo pacman -Sy --needed --noconfirm $PKGS"
-    fi
+    install_pkglist "$REPO_DIR/pkglist-base.txt"
     if [[ ! -d /usr/share/icons/Bibata-Modern-Ice && ! -d "$HOME/.local/share/icons/Bibata-Modern-Ice" ]]; then
-        if command -v paru >/dev/null 2>&1; then
-            run "paru -S --needed --noconfirm bibata-cursor-theme-bin || true"
-        elif command -v yay >/dev/null 2>&1; then
-            run "yay -S --needed --noconfirm bibata-cursor-theme-bin || true"
-        else
-            log "NOTE: Bibata-Modern-Ice cursor theme not found (AUR: bibata-cursor-theme-bin)."
-        fi
+        run "paru -S --needed --noconfirm bibata-cursor-theme-bin || true"
     fi
     for svc in NetworkManager.service bluetooth.service power-profiles-daemon.service; do
         if systemctl list-unit-files "$svc" >/dev/null 2>&1; then
@@ -161,6 +172,10 @@ fi
 
 # 2. Build Rust workspace + standalone kanagawa-polkit
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
+    if command -v rustup >/dev/null 2>&1 && ! rustc --version >/dev/null 2>&1; then
+        log "Initializing default Rust toolchain via rustup..."
+        run "rustup default stable"
+    fi
     log "Building universal Rust workspace (kanagawa-tools, kanagawa-shell, kanagawa-greeter, dolphin-converter)..."
     run "cargo build --manifest-path '$REPO_DIR/Cargo.toml' --workspace --release"
 
@@ -273,15 +288,14 @@ done
 if [[ "$WITH_GREETER" -eq 1 ]]; then
     log "Configuring greetd + kanagawa-greeter..."
     if [[ "$SKIP_PKGS" -eq 0 ]]; then
-        if command -v paru >/dev/null 2>&1; then
-            run "paru -S --needed --noconfirm greetd cage"
-        elif command -v yay >/dev/null 2>&1; then
-            run "yay -S --needed --noconfirm greetd cage"
-        else
-            run "sudo pacman -S --needed --noconfirm greetd cage"
-        fi
+        ensure_paru
+        run "paru -S --needed --noconfirm greetd cage"
     fi
     install_root_if_changed 644 "$REPO_DIR/assets/backgrounds/kanagawa-greeter.jpg" /usr/share/backgrounds/kanagawa-greeter.jpg
+    if [[ -f /etc/greetd/config.toml ]] && ! cmp -s "$REPO_DIR/system/etc/greetd/config.toml" /etc/greetd/config.toml 2>/dev/null; then
+        log "Backing up existing /etc/greetd/config.toml -> /etc/greetd/config.toml.bak.${BACKUP_STAMP}"
+        run "sudo cp -a /etc/greetd/config.toml '/etc/greetd/config.toml.bak.${BACKUP_STAMP}'"
+    fi
     install_root_if_changed 644 "$REPO_DIR/system/etc/greetd/config.toml" /etc/greetd/config.toml
     install_root_if_changed 644 "$REPO_DIR/system/etc/greetd/environments" /etc/greetd/environments
     if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -292,7 +306,14 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
         install_root_if_changed 644 "$greeter_tmp" /etc/greetd/kanagawa-greeter.json
         rm -f "$greeter_tmp"
     fi
-    run "sudo systemctl enable greetd.service"
+    for dm in sddm.service gdm.service lightdm.service; do
+        if systemctl is-enabled "$dm" >/dev/null 2>&1; then
+            log "Disabling conflicting display manager: $dm"
+            run "sudo systemctl disable '$dm'"
+        fi
+    done
+    log "Enabling greetd.service..."
+    run "sudo systemctl enable --force greetd.service"
 fi
 
 # 7. Enable systemd user units (live D-Bus or offline TTY symlink fallback) & rebuild KDE cache

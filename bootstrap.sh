@@ -17,6 +17,21 @@ if ! command -v git >/dev/null 2>&1; then
     sudo pacman -Sy --needed --noconfirm git
 fi
 
+if [[ " $* " != *" --skip-pkgs "* ]] && ! command -v paru >/dev/null 2>&1; then
+    echo "[bootstrap] Installing paru..."
+    sudo pacman -Sy --needed --noconfirm base-devel git
+    if pacman -Si paru >/dev/null 2>&1; then
+        sudo pacman -S --needed --noconfirm paru
+    else
+        TMP_DIR="$(mktemp -d)"
+        trap 'rm -rf "$TMP_DIR"' EXIT
+        git clone --depth 1 https://aur.archlinux.org/paru-bin.git "$TMP_DIR/paru-bin"
+        (cd "$TMP_DIR/paru-bin" && makepkg -si --noconfirm)
+        rm -rf "$TMP_DIR"
+        trap - EXIT
+    fi
+fi
+
 mkdir -p "$(dirname "$TARGET_DIR")"
 if [[ -d "$TARGET_DIR/.git" ]]; then
     echo "[bootstrap] Updating existing clone at $TARGET_DIR..."
