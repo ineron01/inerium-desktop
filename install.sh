@@ -224,7 +224,7 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
         log "Initializing default Rust toolchain via rustup..."
         run "rustup default stable"
     fi
-    log "Building universal Rust workspace (kanagawa-tools, kanagawa-shell, kanagawa-greeter, dolphin-converter)..."
+    log "Building universal Rust workspace (kanagawa-tools, kanagawa-shell, kanagawa-greeter, kanagawa-setup, dolphin-converter)..."
     run "cargo build --manifest-path '$REPO_DIR/Cargo.toml' --workspace --release"
 
     log "Building standalone kanagawa-polkit..."
@@ -236,7 +236,7 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
         hypr-ipc-bridge kanagawa-battery kanagawa-bluetooth kanagawa-clipboard \
         kanagawa-clock kanagawa-dnd kanagawa-hotspot kanagawa-hwmon \
         kanagawa-layout kanagawa-network kanagawa-osd-watcher kanagawa-popup \
-        kanagawa-updates kanagawa-shell dolphin-convert; do
+        kanagawa-updates kanagawa-shell kanagawa-setup dolphin-convert; do
         run "install -m 755 '$REPO_DIR/target/release/$bin' '$HOME/.local/bin/$bin'"
     done
     run "install -m 755 '$REPO_DIR/standalone/kanagawa-polkit/target/release/kanagawa-polkit' '$HOME/.local/bin/kanagawa-polkit'"

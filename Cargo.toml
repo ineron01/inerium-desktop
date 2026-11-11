@@ -4,6 +4,7 @@ members = [
     "crates/kanagawa-tools",
     "crates/kanagawa-shell",
     "crates/kanagawa-greeter",
+    "crates/kanagawa-setup",
     "crates/dolphin-converter",
 ]
 exclude = [

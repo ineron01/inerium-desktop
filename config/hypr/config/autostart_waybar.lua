@@ -16,6 +16,6 @@ hl.on("hyprland.start", function ()
     -- 4. Фоновая мультиязычная индексация приложений (oneshot)
     hl.exec_cmd("sudo -n /usr/local/bin/kanagawa-desktop-indexer")
 
-    -- 5. Незавершённые шаги первичной настройки (входы в аккаунты); без шагов — ничего
-    hl.exec_cmd("kanagawa-first-login --autostart")
+    -- 5. Первичная настройка окружения и интеграций; если всё пройдено — выходит сразу
+    hl.exec_cmd("kanagawa-setup --autostart")
 end)

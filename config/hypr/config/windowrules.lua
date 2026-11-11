@@ -3,6 +3,7 @@
 -- Generic floating position
 hl.window_rule({ match = { float = true }, persistent_size = true })
 hl.window_rule({ match = { class = "^(kanagawa-first-login)$" }, float = true, center = true })
+hl.window_rule({ match = { class = "^(org\\.kanagawa\\.setup|kanagawa-setup)$" }, float = true, center = true, size = { "900", "640" } })
 
 -- Picture-in-Picture
 hl.window_rule({

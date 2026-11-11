@@ -63,6 +63,7 @@ qt6ct
 nwg-look
 gtk4
 gtk4-layer-shell
+vte4
 libadwaita
 pango
 cairo
