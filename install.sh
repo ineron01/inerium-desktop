@@ -148,7 +148,7 @@ ensure_paru() {
         return 0
     fi
     log "paru not found; installing paru..."
-    run "sudo pacman -Sy --needed --noconfirm base-devel git"
+    run "sudo pacman -S --needed --noconfirm base-devel git"
     if pacman -Si paru >/dev/null 2>&1; then
         run "sudo pacman -S --needed --noconfirm paru"
     elif [[ "$DRY_RUN" -eq 1 ]]; then
@@ -197,6 +197,9 @@ user_unit_path() {
 
 # 1. Install base packages
 if [[ "$SKIP_PKGS" -eq 0 ]]; then
+    # One full upgrade up front; later installs use -S only, so nothing is ever a partial upgrade
+    log "Upgrading the system (pacman -Syu)..."
+    run "sudo pacman -Syu --noconfirm"
     ensure_paru
     log "Installing base packages from pkglist-base.txt..."
     install_pkglist "$REPO_DIR/pkglist-base.txt"
