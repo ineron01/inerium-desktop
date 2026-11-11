@@ -16,9 +16,17 @@ Universal CachyOS / Arch Linux desktop environment built around **Hyprland (Lua 
 
 ## Quick Start
 
+**Fresh TTY one-line bootstrap (Arch / CachyOS):**
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/ineron01/kanagawa-desktop/main/bootstrap.sh)
+```
+
+**Local / manual run:**
+
 ```bash
 ./install.sh --dry-run
-./install.sh --fetch-model
+./install.sh --with-greeter --fetch-model
 ```
 
 Hardware-specific MSI features (`msi-fan-regulator`) are gated behind the `msi-ec` Cargo feature and disabled in the universal workspace build by default. All panels and utilities perform runtime capability detection (`/sys/devices/platform/msi-ec`, `/sys/class/backlight`, `/sys/class/power_supply/`, `/sys/class/net/`, `envycontrol`) and gracefully hide unavailable controls.

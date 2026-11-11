@@ -4,13 +4,8 @@
 # ============================================================================
 set -euo pipefail
 
-REPO_URL="${KANAGAWA_DESKTOP_REPO:-}"
+REPO_URL="${KANAGAWA_DESKTOP_REPO:-https://github.com/ineron01/kanagawa-desktop.git}"
 TARGET_DIR="${KANAGAWA_DESKTOP_DIR:-$HOME/Repos/kanagawa-desktop}"
-
-if [[ -z "$REPO_URL" ]]; then
-    echo "Error: KANAGAWA_DESKTOP_REPO URL is not set yet (publish to GitHub first)." >&2
-    exit 1
-fi
 
 if ! command -v git >/dev/null 2>&1; then
     echo "[bootstrap] Installing git..."
