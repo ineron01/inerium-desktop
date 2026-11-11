@@ -172,12 +172,12 @@ fn find_k10temp_path() -> Option<PathBuf> {
     if let Ok(entries) = fs::read_dir("/sys/class/hwmon") {
         for entry in entries.flatten() {
             let p = entry.path();
-            if let Ok(name) = fs::read_to_string(p.join("name")) {
-                if name.trim() == "k10temp" {
-                    let temp_file = p.join("temp1_input");
-                    if temp_file.exists() {
-                        return Some(temp_file);
-                    }
+            if let Ok(name) = fs::read_to_string(p.join("name"))
+                && name.trim() == "k10temp"
+            {
+                let temp_file = p.join("temp1_input");
+                if temp_file.exists() {
+                    return Some(temp_file);
                 }
             }
         }
@@ -369,7 +369,7 @@ impl HardwareController {
                         }
                         continue;
                     }
-                    if &fw_buf != EXPECTED_FW {
+                    if fw_buf != *EXPECTED_FW {
                         let found = String::from_utf8_lossy(&fw_buf);
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
@@ -395,11 +395,11 @@ impl HardwareController {
     }
 
     fn init_sensors(&mut self) {
-        if let Some(path) = find_k10temp_path() {
-            if let Ok(file) = File::open(&path) {
-                self.k10temp_file = Some(file);
-                self.k10temp_path = Some(path);
-            }
+        if let Some(path) = find_k10temp_path()
+            && let Ok(file) = File::open(&path)
+        {
+            self.k10temp_file = Some(file);
+            self.k10temp_path = Some(path);
         }
         if let Ok(file) = File::open(GPU_PCI_STATUS) {
             self.pci_status_file = Some(file);
@@ -468,46 +468,41 @@ impl HardwareController {
     fn read_cpu_temp(&mut self) -> Option<(i32, TempSource)> {
         let mut buf = [0u8; 16];
         if let Some(ref file) = self.k10temp_file {
-            if let Ok(n) = file.read_at(&mut buf, 0) {
-                if n > 0 {
-                    if let Ok(s) = std::str::from_utf8(&buf[..n]) {
-                        if let Ok(milli) = s.trim().parse::<i32>() {
-                            let t = milli / 1000;
-                            if (1..125).contains(&t) {
-                                return Some((t, TempSource::K10Temp));
-                            }
-                        }
-                    }
+            if let Ok(n) = file.read_at(&mut buf, 0)
+                && n > 0
+                && let Ok(s) = std::str::from_utf8(&buf[..n])
+                && let Ok(milli) = s.trim().parse::<i32>()
+            {
+                let t = milli / 1000;
+                if (1..125).contains(&t) {
+                    return Some((t, TempSource::K10Temp));
                 }
             }
             self.k10temp_file = None;
         }
 
         // Try to re-find k10temp if previously lost
-        if let Some(path) = find_k10temp_path() {
-            if let Ok(file) = File::open(&path) {
-                if let Ok(n) = file.read_at(&mut buf, 0) {
-                    if n > 0 {
-                        if let Ok(s) = std::str::from_utf8(&buf[..n]) {
-                            if let Ok(milli) = s.trim().parse::<i32>() {
-                                let t = milli / 1000;
-                                if (1..125).contains(&t) {
-                                    self.k10temp_file = Some(file);
-                                    self.k10temp_path = Some(path);
-                                    return Some((t, TempSource::K10Temp));
-                                }
-                            }
-                        }
-                    }
-                }
+        if let Some(path) = find_k10temp_path()
+            && let Ok(file) = File::open(&path)
+            && let Ok(n) = file.read_at(&mut buf, 0)
+            && n > 0
+            && let Ok(s) = std::str::from_utf8(&buf[..n])
+            && let Ok(milli) = s.trim().parse::<i32>()
+        {
+            let t = milli / 1000;
+            if (1..125).contains(&t) {
+                self.k10temp_file = Some(file);
+                self.k10temp_path = Some(path);
+                return Some((t, TempSource::K10Temp));
             }
         }
 
         // Fallback to EC 0x68 socket temperature (targeted read of 1 byte)
-        if let Ok(b) = self.read_ec_single_byte(REG_CPU_TEMP as u64) {
-            if b > 0 && b < 120 {
-                return Some((b as i32, TempSource::EcFallback));
-            }
+        if let Ok(b) = self.read_ec_single_byte(REG_CPU_TEMP as u64)
+            && b > 0
+            && b < 120
+        {
+            return Some((b as i32, TempSource::EcFallback));
         }
 
         None
@@ -517,23 +512,22 @@ impl HardwareController {
     fn is_gpu_suspended(&mut self) -> bool {
         let mut buf = [0u8; 32];
         if let Some(ref file) = self.pci_status_file {
-            if let Ok(n) = file.read_at(&mut buf, 0) {
-                if n > 0 {
-                    let s = std::str::from_utf8(&buf[..n]).unwrap_or("");
-                    return s.trim() == "suspended";
-                }
+            if let Ok(n) = file.read_at(&mut buf, 0)
+                && n > 0
+            {
+                let s = std::str::from_utf8(&buf[..n]).unwrap_or("");
+                return s.trim() == "suspended";
             }
             self.pci_status_file = None;
         }
-        if let Ok(file) = File::open(GPU_PCI_STATUS) {
-            if let Ok(n) = file.read_at(&mut buf, 0) {
-                if n > 0 {
-                    let s = std::str::from_utf8(&buf[..n]).unwrap_or("");
-                    let suspended = s.trim() == "suspended";
-                    self.pci_status_file = Some(file);
-                    return suspended;
-                }
-            }
+        if let Ok(file) = File::open(GPU_PCI_STATUS)
+            && let Ok(n) = file.read_at(&mut buf, 0)
+            && n > 0
+        {
+            let s = std::str::from_utf8(&buf[..n]).unwrap_or("");
+            let suspended = s.trim() == "suspended";
+            self.pci_status_file = Some(file);
+            return suspended;
         }
         false
     }
@@ -543,10 +537,11 @@ impl HardwareController {
         if is_suspended {
             return None;
         }
-        if let Ok(b) = self.read_ec_single_byte(REG_GPU_TEMP as u64) {
-            if b > 0 && b < 120 {
-                return Some(b as i32);
-            }
+        if let Ok(b) = self.read_ec_single_byte(REG_GPU_TEMP as u64)
+            && b > 0
+            && b < 120
+        {
+            return Some(b as i32);
         }
         None
     }
@@ -612,7 +607,7 @@ impl HardwareController {
 
     fn handle_io_error(&mut self, reason: &str) {
         self.ec_fail_count += 1;
-        if self.ec_fail_count <= 3 || self.ec_fail_count % 60 == 0 {
+        if self.ec_fail_count <= 3 || self.ec_fail_count.is_multiple_of(60) {
             eprintln!(
                 "[msi-fan-regulator] I/O warning ({}/3): {}",
                 self.ec_fail_count, reason
@@ -628,7 +623,7 @@ impl HardwareController {
         let now = get_boottime();
         let resumed_from_sleep = self
             .last_tick
-            .map_or(false, |t| now.saturating_sub(t) > Duration::from_secs(3));
+            .is_some_and(|t| now.saturating_sub(t) > Duration::from_secs(3));
         self.last_tick = Some(now);
 
         // 1. Ensure fan mode is strictly set to advanced (0x8D)
@@ -678,7 +673,7 @@ impl HardwareController {
             }
 
             let target_gpu_wake = calculate_gpu_target(tg, Some(cpu_t), Some(self.cpu_pct), false);
-            if tg.map_or(true, |g| g < IMMEDIATE_TEMP) && cpu_t < 68 {
+            if tg.is_none_or(|g| g < IMMEDIATE_TEMP) && cpu_t < 68 {
                 self.gpu_pct = 0;
             } else {
                 self.gpu_pct = self.gpu_pct.min(target_gpu_wake);
@@ -688,13 +683,13 @@ impl HardwareController {
         // 3. Emergency overdrive protection
         // Only release emergency if there are NO active I/O errors (ec_fail_count == 0)
         // and only if emergency boost was engaged by this daemon (self.boost_by_us).
-        if cpu_t >= EMERGENCY_CPU || tg.map_or(false, |g| g >= EMERGENCY_GPU) {
+        if cpu_t >= EMERGENCY_CPU || tg.is_some_and(|g| g >= EMERGENCY_GPU) {
             let g_str = tg.map_or("N/A".to_string(), |g| format!("{}°C", g));
             self.emergency(&format!("CPU {}°C, GPU {}", cpu_t, g_str));
         } else if self.ec_fail_count == 0
             && self.boost_by_us
             && cpu_t < RELEASE_CPU
-            && tg.map_or(true, |g| g < RELEASE_GPU)
+            && tg.is_none_or(|g| g < RELEASE_GPU)
         {
             self.release_emergency();
         }
@@ -803,11 +798,11 @@ impl HardwareController {
             self.handle_io_error(&format!("Reading CPU fan table failed: {}", e));
             return;
         }
-        if cpu_table != [self.cpu_pct; 7] {
-            if let Err(e) = self.write_ec_table(REG_CPU_STEP0, self.cpu_pct) {
-                self.handle_io_error(&format!("EC CPU table write failed: {}", e));
-                return;
-            }
+        if cpu_table != [self.cpu_pct; 7]
+            && let Err(e) = self.write_ec_table(REG_CPU_STEP0, self.cpu_pct)
+        {
+            self.handle_io_error(&format!("EC CPU table write failed: {}", e));
+            return;
         }
 
         let mut gpu_table = [0u8; 7];
@@ -815,11 +810,11 @@ impl HardwareController {
             self.handle_io_error(&format!("Reading GPU fan table failed: {}", e));
             return;
         }
-        if gpu_table != [self.gpu_pct; 7] {
-            if let Err(e) = self.write_ec_table(REG_GPU_STEP0, self.gpu_pct) {
-                self.handle_io_error(&format!("EC GPU table write failed: {}", e));
-                return;
-            }
+        if gpu_table != [self.gpu_pct; 7]
+            && let Err(e) = self.write_ec_table(REG_GPU_STEP0, self.gpu_pct)
+        {
+            self.handle_io_error(&format!("EC GPU table write failed: {}", e));
+            return;
         }
 
         // Reset I/O error count on complete successful cycle
@@ -869,11 +864,11 @@ impl HardwareController {
 
         let io_failed = write_cpu.is_err() || write_gpu.is_err();
         let sensor_lost = cpu_temp_opt.is_none();
-        let critical_overheat = cpu_temp_opt.map_or(false, |(t, _)| t >= EMERGENCY_CPU)
-            || gpu_temp_opt.map_or(false, |t| t >= EMERGENCY_GPU);
+        let critical_overheat = cpu_temp_opt.is_some_and(|(t, _)| t >= EMERGENCY_CPU)
+            || gpu_temp_opt.is_some_and(|t| t >= EMERGENCY_GPU);
         let retain_boost = self.boost_by_us
-            && (cpu_temp_opt.map_or(true, |(t, _)| t >= RELEASE_CPU)
-                || gpu_temp_opt.map_or(false, |t| t >= RELEASE_GPU));
+            && (cpu_temp_opt.is_none_or(|(t, _)| t >= RELEASE_CPU)
+                || gpu_temp_opt.is_some_and(|t| t >= RELEASE_GPU));
 
         if io_failed || sensor_lost || critical_overheat || retain_boost {
             let reason = if io_failed {
