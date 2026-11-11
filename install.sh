@@ -302,9 +302,6 @@ render_template "$REPO_DIR/config/hypr/hyprpaper.conf.template" "$HOME/.config/h
 render_template "$REPO_DIR/config/hypr/profile.default" "$HOME/.config/hypr/profile" 1
 
 WS_COUNT_FILE="$HOME/.config/hypr/config/workspaces_count"
-if [[ -z "$WORKSPACES_PER_MON" && "$DRY_RUN" -eq 0 && ! -e "$WS_COUNT_FILE" && -t 0 ]]; then
-    read -rp "[kanagawa-desktop] Workspaces per monitor (1-9) [3]: " WORKSPACES_PER_MON || true
-fi
 if [[ -n "$WORKSPACES_PER_MON" && "$WORKSPACES_PER_MON" =~ ^[1-9]$ ]]; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
         printf '[DRY-RUN] write %s -> %s\n' "$WORKSPACES_PER_MON" "$WS_COUNT_FILE"
