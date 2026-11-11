@@ -13,7 +13,7 @@ use gtk4::{glib, pango};
 
 use config::{load_config, load_state, save_state, Config, State, DEFAULT_CONFIG_PATH, DEFAULT_STATE_PATH, DEMO_STATE_PATH};
 use selector::SessionSelector;
-use sessions::{read_sessions, Session};
+use sessions::{read_sessions_filtered, Session};
 
 const CSS: &str = r#"
 * { font-family: "JetBrainsMono Nerd Font", monospace; color: #c5c9c5; }
@@ -263,7 +263,7 @@ fn build_ui(app: &gtk4::Application, demo: bool) {
     let state_path = if demo { DEMO_STATE_PATH } else { DEFAULT_STATE_PATH };
     let saved_state = load_state(state_path);
     let user = saved_state.user.clone().unwrap_or_else(|| cfg.user.clone());
-    let sessions = read_sessions();
+    let sessions = read_sessions_filtered(&cfg.hide_sessions, &cfg.default_session);
 
     let win = gtk4::ApplicationWindow::new(app);
     win.set_title(Some("kanagawa-greeter"));

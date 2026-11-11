@@ -28,10 +28,17 @@ thread_local! {
 
 pub fn query_devices() -> Vec<BtDevice> {
     let mut devices = Vec::new();
+    if !crate::hw::has_bluetooth() {
+        return devices;
+    }
 
     // Query connected devices first
     let mut connected_macs = Vec::new();
-    if let Ok(out) = Command::new("bluetoothctl").args(["devices", "Connected"]).output() {
+    if let Ok(out) = Command::new("bluetoothctl")
+        .args(["--timeout", "2", "devices", "Connected"])
+        .stdin(std::process::Stdio::null())
+        .output()
+    {
         let text = String::from_utf8_lossy(&out.stdout);
         for line in text.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
@@ -41,7 +48,11 @@ pub fn query_devices() -> Vec<BtDevice> {
         }
     }
 
-    if let Ok(out) = Command::new("bluetoothctl").args(["devices"]).output() {
+    if let Ok(out) = Command::new("bluetoothctl")
+        .args(["--timeout", "2", "devices"])
+        .stdin(std::process::Stdio::null())
+        .output()
+    {
         let text = String::from_utf8_lossy(&out.stdout);
         let mut seen = std::collections::HashSet::new();
 

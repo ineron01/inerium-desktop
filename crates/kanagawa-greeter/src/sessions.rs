@@ -55,7 +55,7 @@ fn is_freedesktop_specifier(token: &str) -> bool {
     token.starts_with('%') && token.len() == 2
 }
 
-pub fn read_sessions() -> Vec<Session> {
+pub fn read_sessions_filtered(hide: &[String], default_session: &str) -> Vec<Session> {
     let mut sessions = Vec::new();
 
     for dir in SESSION_DIRS {
@@ -76,12 +76,28 @@ pub fn read_sessions() -> Vec<Session> {
         entries.sort();
 
         for file_path in entries {
+            let fname = file_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            if hide.iter().any(|h| h == fname) {
+                continue;
+            }
             if let Ok(content) = fs::read_to_string(&file_path)
                 && let Some(session) = parse_desktop_file(&content)
+                && !hide.iter().any(|h| h == &session.name)
             {
                 sessions.push(session);
             }
         }
+    }
+
+    if !default_session.is_empty()
+        && let Some(pos) = sessions.iter().position(|s| s.name == default_session)
+        && pos > 0
+    {
+        let def = sessions.remove(pos);
+        sessions.insert(0, def);
     }
 
     if sessions.is_empty() {
@@ -161,13 +177,13 @@ mod tests {
     fn test_parse_desktop_file() {
         let content = r#"
 [Desktop Entry]
-Name=Hyprland (Waybar)
+Name=Hyprland (UWSM-Waybar)
 Comment=Hyprland with Waybar shell
 Exec=env HYPR_PROFILE=waybar /usr/bin/start-hyprland
 Type=Application
 "#;
         let s = parse_desktop_file(content).unwrap();
-        assert_eq!(s.name, "Hyprland (Waybar)");
+        assert_eq!(s.name, "Hyprland (UWSM-Waybar)");
         assert_eq!(s.cmd, vec!["env", "HYPR_PROFILE=waybar", "/usr/bin/start-hyprland"]);
 
         let nodisplay = r#"

@@ -1,5 +1,11 @@
 {
   "user": "__USER__",
   "background": "/usr/share/backgrounds/kanagawa-greeter.jpg",
-  "default_session": "Hyprland (Waybar)"
+  "default_session": "Hyprland (UWSM-Waybar)",
+  "hide_sessions": [
+    "hyprland.desktop",
+    "hyprland-uwsm.desktop",
+    "hyprland-backup.desktop",
+    "plasma.desktop"
+  ]
 }

@@ -15,6 +15,8 @@ pub struct Config {
     pub background: String,
     #[serde(default = "default_session")]
     pub default_session: String,
+    #[serde(default)]
+    pub hide_sessions: Vec<String>,
 }
 
 fn default_user() -> String {
@@ -37,7 +39,7 @@ fn default_background() -> String {
 }
 
 fn default_session() -> String {
-    "Hyprland (Waybar)".to_string()
+    "Hyprland (UWSM-Waybar)".to_string()
 }
 
 impl Default for Config {
@@ -46,6 +48,7 @@ impl Default for Config {
             user: default_user(),
             background: default_background(),
             default_session: default_session(),
+            hide_sessions: Vec::new(),
         }
     }
 }
@@ -112,7 +115,8 @@ mod tests {
     fn test_load_config_fallback() {
         let cfg = load_config("/nonexistent/path/kanagawa.json");
         assert_eq!(cfg.user, default_user());
-        assert_eq!(cfg.default_session, "Hyprland (Waybar)");
+        assert_eq!(cfg.default_session, "Hyprland (UWSM-Waybar)");
+        assert!(cfg.hide_sessions.is_empty());
     }
 
     #[test]

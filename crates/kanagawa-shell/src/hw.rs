@@ -1,7 +1,7 @@
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Mutex, OnceLock};
 use std::thread;
@@ -813,7 +813,17 @@ pub fn is_hotspot_active() -> bool {
     false
 }
 
+pub fn has_bluetooth() -> bool {
+    fs::read_dir("/sys/class/bluetooth")
+        .map(|mut rd| rd.next().is_some())
+        .unwrap_or(false)
+}
+
 pub fn is_bluetooth_enabled() -> bool {
+    if !has_bluetooth() {
+        return false;
+    }
+
     // 1. Проверка rfkill
     if let Ok(entries) = std::fs::read_dir("/sys/class/rfkill") {
         for entry in entries.flatten() {
@@ -827,8 +837,12 @@ pub fn is_bluetooth_enabled() -> bool {
         }
     }
 
-    // 2. Проверка bluetoothctl show
-    if let Ok(output) = Command::new("bluetoothctl").arg("show").output() {
+    // 2. Проверка bluetoothctl show с таймаутом (чтобы не зависать при мёртвом bluetoothd)
+    if let Ok(output) = Command::new("bluetoothctl")
+        .args(["--timeout", "2", "show"])
+        .stdin(Stdio::null())
+        .output()
+    {
         return String::from_utf8_lossy(&output.stdout).contains("Powered: yes");
     }
     false
