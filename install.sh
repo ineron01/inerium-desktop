@@ -48,6 +48,15 @@ if [[ "$EUID" -eq 0 ]]; then
     exit 1
 fi
 
+# Ask for the sudo password once and keep the timestamp fresh, so long AUR/Cargo builds
+# never stall on a second prompt (a nested installer reuses the parent's keepalive).
+if [[ "$DRY_RUN" -eq 0 && -z "${KANAGAWA_SUDO_KEEPALIVE:-}" ]]; then
+    sudo -v
+    ( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
+    export KANAGAWA_SUDO_KEEPALIVE=$!
+    trap 'kill "$KANAGAWA_SUDO_KEEPALIVE" 2>/dev/null || true' EXIT
+fi
+
 run() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
         printf '[DRY-RUN] %s\n' "$*"
