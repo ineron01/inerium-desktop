@@ -15,6 +15,7 @@ mako
 swayosd
 cliphist
 wl-clipboard
+libnotify
 grim
 slurp
 satty
@@ -27,6 +28,7 @@ pipewire-alsa
 wireplumber
 pavucontrol
 networkmanager
+iw
 network-manager-applet
 dnsmasq
 bluez

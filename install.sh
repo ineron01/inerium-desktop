@@ -43,6 +43,11 @@ done
 
 log() { printf '[kanagawa-desktop] %s\n' "$*"; }
 
+if [[ "$EUID" -eq 0 ]]; then
+    echo "Run install.sh as your regular user (not root/sudo); it calls sudo itself." >&2
+    exit 1
+fi
+
 run() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
         printf '[DRY-RUN] %s\n' "$*"
@@ -96,7 +101,9 @@ install_root_if_changed() {
     local src="$2"
     local dst="$3"
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        printf '[DRY-RUN] sudo install -m %s %s -> %s\n' "$mode" "$src" "$dst"
+        if ! cmp -s "$src" "$dst" 2>/dev/null; then
+            printf '[DRY-RUN] sudo install -m %s %s -> %s\n' "$mode" "$src" "$dst"
+        fi
         return
     fi
     if ! cmp -s "$src" "$dst" 2>/dev/null; then
@@ -140,19 +147,43 @@ ensure_paru() {
     else
         local tmp_dir
         tmp_dir="$(mktemp -d)"
-        trap 'rm -rf "$tmp_dir"' RETURN
         git clone --depth 1 https://aur.archlinux.org/paru-bin.git "$tmp_dir/paru-bin"
-        (cd "$tmp_dir/paru-bin" && makepkg -si --noconfirm)
+        (cd "$tmp_dir/paru-bin" && makepkg -si --noconfirm) || { rm -rf "$tmp_dir"; return 1; }
+        rm -rf "$tmp_dir"
+    fi
+}
+
+install_pkgs() {
+    local -a missing
+    # pacman -T lists only deps not satisfied by installed packages or their provides,
+    # so e.g. "rust" is skipped when rustup is installed instead of hitting a conflict prompt.
+    mapfile -t missing < <(pacman -T "$@" 2>/dev/null || true)
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        return 0
+    fi
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] paru -S --needed --noconfirm %s\n' "${missing[*]}"
+    else
+        paru -S --needed --noconfirm "${missing[@]}"
     fi
 }
 
 install_pkglist() {
-    local pkglist="$1"
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        printf '[DRY-RUN] paru -S --needed --noconfirm - < %s\n' "$pkglist"
-    else
-        grep -vE '^\s*(#|$)' "$pkglist" | paru -S --needed --noconfirm -
-    fi
+    local -a wanted
+    mapfile -t wanted < <(grep -vE '^\s*(#|$)' "$1" | awk '{print $1}')
+    install_pkgs "${wanted[@]}"
+}
+
+# Resolve a user unit the way systemd would (user overrides first, then packaged units)
+user_unit_path() {
+    local d
+    for d in "$HOME/.config/systemd/user" /etc/systemd/user /usr/lib/systemd/user; do
+        if [[ -e "$d/$1" ]]; then
+            printf '%s\n' "$d/$1"
+            return 0
+        fi
+    done
+    return 1
 }
 
 # 1. Install base packages
@@ -164,7 +195,7 @@ if [[ "$SKIP_PKGS" -eq 0 ]]; then
         run "paru -S --needed --noconfirm bibata-cursor-theme-bin || true"
     fi
     for svc in NetworkManager.service bluetooth.service power-profiles-daemon.service; do
-        if systemctl list-unit-files "$svc" >/dev/null 2>&1; then
+        if ! systemctl is-enabled --quiet "$svc" 2>/dev/null && systemctl list-unit-files "$svc" >/dev/null 2>&1; then
             run "sudo systemctl enable '$svc' >/dev/null 2>&1 || true"
         fi
     done
@@ -236,7 +267,12 @@ for f in AGENTS.md hypridle.conf hyprland.lua hyprlock.conf hyprtoolkit.conf xdp
 done
 for f in "$REPO_DIR"/config/hypr/config/*.lua "$REPO_DIR"/config/hypr/config/theme_settings.json; do
     base="$(basename "$f")"
-    if [[ ( "$base" == "autostart_backup.lua" || "$base" == "binds_backup.lua" ) && -e "$HOME/.config/hypr/config/$base" ]]; then
+    if [[ "$base" == "autostart_backup.lua" || "$base" == "binds_backup.lua" ]]; then
+        # Fallback session files are copied once and never symlinked, so a broken repo
+        # checkout cannot take down the emergency session; existing copies are left alone.
+        if [[ ! -e "$HOME/.config/hypr/config/$base" ]]; then
+            run "install -m 644 '$f' '$HOME/.config/hypr/config/$base'"
+        fi
         continue
     fi
     link_item "$f" "$HOME/.config/hypr/config/$base"
@@ -289,7 +325,7 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
     log "Configuring greetd + kanagawa-greeter..."
     if [[ "$SKIP_PKGS" -eq 0 ]]; then
         ensure_paru
-        run "paru -S --needed --noconfirm greetd cage"
+        install_pkgs greetd cage
     fi
     install_root_if_changed 644 "$REPO_DIR/assets/backgrounds/kanagawa-greeter.jpg" /usr/share/backgrounds/kanagawa-greeter.jpg
     if [[ -f /etc/greetd/config.toml ]] && ! cmp -s "$REPO_DIR/system/etc/greetd/config.toml" /etc/greetd/config.toml 2>/dev/null; then
@@ -312,12 +348,14 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
             run "sudo systemctl disable '$dm'"
         fi
     done
-    log "Enabling greetd.service..."
-    run "sudo systemctl enable --force greetd.service"
+    if ! systemctl is-enabled --quiet greetd.service 2>/dev/null; then
+        log "Enabling greetd.service..."
+        run "sudo systemctl enable --force greetd.service"
+    fi
 fi
 
 # 7. Enable systemd user units (live D-Bus or offline TTY symlink fallback) & rebuild KDE cache
-USER_UNITS="cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service kanagawa-desktop-indexer.path kanagawa-osd-watcher.service kanagawa-polkit.service kanagawa-popups.service kanagawa-updates.timer swayosd-server.service"
+USER_UNITS="cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service hypridle.service kanagawa-desktop-indexer.path kanagawa-osd-watcher.service kanagawa-polkit.service kanagawa-popups.service kanagawa-updates.timer mako.service swayosd-server.service waybar.service"
 MASK_UNITS="hyprpolkitagent.service at-spi2-registryd.service at-spi-dbus-bus.service"
 if systemctl --user show-environment >/dev/null 2>&1; then
     log "Refreshing systemd user daemon & enabling user services..."
@@ -326,16 +364,19 @@ if systemctl --user show-environment >/dev/null 2>&1; then
     run "systemctl --user enable $USER_UNITS"
 else
     log "No active systemd --user D-Bus session (TTY/chroot); creating offline .wants/mask links..."
-    run "mkdir -p '$HOME/.config/systemd/user/default.target.wants' '$HOME/.config/systemd/user/timers.target.wants' '$HOME/.config/systemd/user/paths.target.wants'"
     for m in $MASK_UNITS; do
         run "ln -sfn /dev/null '$HOME/.config/systemd/user/$m'"
     done
     for u in $USER_UNITS; do
-        case "$u" in
-            *.timer) run "ln -sfn '$HOME/.config/systemd/user/$u' '$HOME/.config/systemd/user/timers.target.wants/$u'" ;;
-            *.path)  run "ln -sfn '$HOME/.config/systemd/user/$u' '$HOME/.config/systemd/user/paths.target.wants/$u'" ;;
-            *)       run "ln -sfn '$HOME/.config/systemd/user/$u' '$HOME/.config/systemd/user/default.target.wants/$u'" ;;
-        esac
+        if ! unit_src="$(user_unit_path "$u")"; then
+            log "WARNING: user unit $u not found; skipping offline enable"
+            continue
+        fi
+        # Mirror 'systemctl --user enable': link into every [Install] WantedBy= target
+        for target in $(sed -n 's/^WantedBy=//p' "$unit_src"); do
+            run "mkdir -p '$HOME/.config/systemd/user/$target.wants'"
+            run "ln -sfn '$unit_src' '$HOME/.config/systemd/user/$target.wants/$u'"
+        done
     done
 fi
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
