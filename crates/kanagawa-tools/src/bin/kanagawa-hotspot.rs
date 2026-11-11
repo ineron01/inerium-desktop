@@ -58,7 +58,7 @@ fn find_hotspot_connection() -> Option<String> {
                 wifi_names.push(clean);
             }
         }
-        for preferred in ["ineron-hotspot", "kanagawa-hotspot", "Hotspot"] {
+        for preferred in ["kanagawa-hotspot", "Hotspot"] {
             if wifi_names.iter().any(|n| n == preferred) {
                 return Some(preferred.to_string());
             }

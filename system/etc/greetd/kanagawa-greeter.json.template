@@ -1,0 +1,5 @@
+{
+  "user": "__USER__",
+  "background": "/usr/share/backgrounds/kanagawa-greeter.jpg",
+  "default_session": "Hyprland (Waybar)"
+}

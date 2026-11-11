@@ -803,7 +803,7 @@ pub fn is_hotspot_active() -> bool {
             let parts: Vec<&str> = line.split(':').collect();
             if parts.len() >= 2 && (parts[0] == "802-11-wireless" || parts[0] == "wifi") {
                 let name = parts[1].replace("\\:", ":").trim().to_string();
-                if name == "Hotspot" || name == "kanagawa-hotspot" || name == "ineron-hotspot" {
+                if name == "Hotspot" || name == "kanagawa-hotspot" {
                     return true;
                 }
             }

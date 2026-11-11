@@ -1,0 +1,6 @@
+[terminal]
+vt = 1
+
+[default_session]
+command = "cage -s -- /usr/local/bin/kanagawa-greeter"
+user = "greeter"

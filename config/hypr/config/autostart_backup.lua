@@ -5,7 +5,7 @@
 -- ============================================================================
 
 hl.on("hyprland.start", function ()
-    local home = os.getenv("HOME") or "/home/ineron"
+    local home = os.getenv("HOME") or ""
 
     -- Установка курсора темы и размера для Hyprland
     hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 24")

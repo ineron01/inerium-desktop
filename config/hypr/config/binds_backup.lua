@@ -6,7 +6,7 @@
 -- ============================================================================
 
 local mainMod = "SUPER"
-local home = os.getenv("HOME") or "/home/ineron"
+local home = os.getenv("HOME") or ""
 
 local function digitCode(d)
     return "code:" .. (d == 0 and 19 or (9 + d))

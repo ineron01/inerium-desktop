@@ -18,8 +18,8 @@ wl-clipboard
 grim
 slurp
 satty
-greetd
-cage
+# Optional greeter packages (installed automatically with --with-greeter):
+# greetd cage
 
 # Audio, Network, Bluetooth, Power, Display
 pipewire-pulse
@@ -43,6 +43,8 @@ kitty
 alacritty
 btop
 fastfetch
+gnome-text-editor
+gnome-calculator
 dolphin
 ark
 ffmpeg
@@ -69,6 +71,8 @@ noto-fonts-emoji
 rust
 base-devel
 git
+curl
 ripgrep
 pacman-contrib
+xdg-user-dirs
 xorg-xhost

@@ -9,6 +9,8 @@ DRY_RUN=0
 SKIP_PKGS=0
 SKIP_BUILD=0
 FETCH_MODEL=0
+WITH_GREETER=0
+BACKUP_STAMP="$(date +%Y%m%d%H%M%S)"
 
 SILUETA_URL="https://github.com/danielgatis/rembg/releases/download/v0.0.0/silueta.onnx"
 SILUETA_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/dolphin-converter/models/silueta.onnx"
@@ -22,18 +24,20 @@ Options:
   --skip-pkgs     Skip pacman/paru package installation
   --skip-build    Skip Cargo workspace and kanagawa-polkit compilation
   --fetch-model   Download silueta.onnx (~43 MB) if missing
+  --with-greeter  Install and configure greetd + kanagawa-greeter (/etc/greetd/)
   -h, --help      Show this help
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --dry-run)     DRY_RUN=1; shift ;;
-        --skip-pkgs)   SKIP_PKGS=1; shift ;;
-        --skip-build)  SKIP_BUILD=1; shift ;;
-        --fetch-model) FETCH_MODEL=1; shift ;;
-        -h|--help)     usage; exit 0 ;;
-        *)             echo "Unknown option: $1" >&2; usage; exit 1 ;;
+        --dry-run)      DRY_RUN=1; shift ;;
+        --skip-pkgs)    SKIP_PKGS=1; shift ;;
+        --skip-build)   SKIP_BUILD=1; shift ;;
+        --fetch-model)  FETCH_MODEL=1; shift ;;
+        --with-greeter) WITH_GREETER=1; shift ;;
+        -h|--help)      usage; exit 0 ;;
+        *)              echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
 done
 
@@ -51,16 +55,21 @@ link_item() {
     local src="$1"
     local dst="$2"
     if [[ "$DRY_RUN" -eq 1 ]]; then
+        if [[ -e "$dst" && ! -L "$dst" ]]; then
+            printf '[DRY-RUN] mv %s -> %s.bak.%s\n' "$dst" "$dst" "$BACKUP_STAMP"
+        fi
         printf '[DRY-RUN] ln -sfn %s -> %s\n' "$src" "$dst"
         return
     fi
     mkdir -p "$(dirname "$dst")"
-    if [[ -e "$dst" && ! -L "$dst" ]]; then
-        if [[ -d "$dst" ]]; then
-            rm -rf "$dst"
-        else
-            rm -f "$dst"
+    if [[ -L "$dst" ]]; then
+        if [[ "$(readlink -f "$dst" 2>/dev/null || true)" == "$(readlink -f "$src" 2>/dev/null || true)" ]]; then
+            return
         fi
+    elif [[ -e "$dst" ]]; then
+        local bak="${dst}.bak.${BACKUP_STAMP}"
+        log "Backing up existing target: $dst -> $bak"
+        mv "$dst" "$bak"
     fi
     ln -sfn "$src" "$dst"
 }
@@ -78,7 +87,7 @@ render_template() {
         return
     fi
     mkdir -p "$(dirname "$dst")"
-    sed "s|__HOME__|$HOME|g" "$tpl" > "${dst}.tmp"
+    sed -e "s|__HOME__|$HOME|g" -e "s|__USER__|$USER|g" "$tpl" > "${dst}.tmp"
     mv -f "${dst}.tmp" "$dst"
 }
 
@@ -91,8 +100,31 @@ install_root_if_changed() {
         return
     fi
     if ! cmp -s "$src" "$dst" 2>/dev/null; then
+        sudo install -d -m 755 "$(dirname "$dst")"
         sudo install -m "$mode" "$src" "$dst"
     fi
+}
+
+install_sudoers_template() {
+    local tpl="$1"
+    local dst="$2"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] render sudoers %s -> %s (visudo -cf)\n' "$tpl" "$dst"
+        return
+    fi
+    local tmp
+    tmp="$(mktemp)"
+    sed -e "s|__HOME__|$HOME|g" -e "s|__USER__|$USER|g" "$tpl" > "$tmp"
+    if sudo cmp -s "$tmp" "$dst" 2>/dev/null; then
+        rm -f "$tmp"
+        return
+    fi
+    if sudo visudo -cf "$tmp" >/dev/null 2>&1; then
+        sudo install -m 0440 "$tmp" "$dst"
+    else
+        log "WARNING: Invalid sudoers syntax in $tpl; skipped $dst"
+    fi
+    rm -f "$tmp"
 }
 
 # 1. Install base packages
@@ -101,8 +133,19 @@ if [[ "$SKIP_PKGS" -eq 0 ]]; then
     PKGS=$(grep -vE '^\s*(#|$)' "$REPO_DIR/pkglist-base.txt" | tr '\n' ' ')
     if command -v paru >/dev/null 2>&1; then
         run "paru -S --needed --noconfirm $PKGS"
+    elif command -v yay >/dev/null 2>&1; then
+        run "yay -S --needed --noconfirm $PKGS"
     else
         run "sudo pacman -S --needed --noconfirm $PKGS"
+    fi
+    if [[ ! -d /usr/share/icons/Bibata-Modern-Ice && ! -d "$HOME/.local/share/icons/Bibata-Modern-Ice" ]]; then
+        if command -v paru >/dev/null 2>&1; then
+            run "paru -S --needed --noconfirm bibata-cursor-theme-bin || true"
+        elif command -v yay >/dev/null 2>&1; then
+            run "yay -S --needed --noconfirm bibata-cursor-theme-bin || true"
+        else
+            log "NOTE: Bibata-Modern-Ice cursor theme not found (AUR: bibata-cursor-theme-bin)."
+        fi
     fi
 fi
 
@@ -139,12 +182,14 @@ for desktop in "$REPO_DIR"/local/share/kio/servicemenus/*.desktop; do
     link_item "$desktop" "$HOME/.local/share/kio/servicemenus/$name"
 done
 install_root_if_changed 755 "$REPO_DIR/system/usr/local/bin/kanagawa-desktop-indexer" /usr/local/bin/kanagawa-desktop-indexer
+install_sudoers_template "$REPO_DIR/system/etc/sudoers.d/kanagawa-desktop-indexer.template" /etc/sudoers.d/kanagawa-desktop-indexer
 
 # 4. Symlink ~/.config directories and Hyprland files
 log "Linking desktop configurations into ~/.config..."
 for dir in alacritty environment.d gtk-3.0 gtk-4.0 kitty mako rofi uwsm waybar; do
     link_item "$REPO_DIR/config/$dir" "$HOME/.config/$dir"
 done
+link_item "$REPO_DIR/config/btop/btop.conf" "$HOME/.config/btop/btop.conf"
 
 # Fish (preserve runtime fish_variables)
 run "mkdir -p '$HOME/.config/fish/functions'"
@@ -174,6 +219,19 @@ done
 render_template "$REPO_DIR/config/hypr/hyprpaper.conf.template" "$HOME/.config/hypr/hyprpaper.conf" 1
 render_template "$REPO_DIR/config/hypr/profile.default" "$HOME/.config/hypr/profile" 1
 
+# Ensure XDG user dirs & default wallpapers exist (non-destructive)
+if command -v xdg-user-dirs-update >/dev/null 2>&1 && [[ ! -d "$HOME/Pictures" ]]; then
+    run "xdg-user-dirs-update"
+fi
+run "mkdir -p '$HOME/Pictures/Wallpapers'"
+for wall in "$REPO_DIR"/assets/wallpapers/*; do
+    [[ -f "$wall" ]] || continue
+    wname="$(basename "$wall")"
+    if [[ ! -e "$HOME/Pictures/Wallpapers/$wname" ]]; then
+        run "install -m 644 '$wall' '$HOME/Pictures/Wallpapers/$wname'"
+    fi
+done
+
 # Systemd user units
 run "mkdir -p '$HOME/.config/systemd/user/hypridle.service.d' '$HOME/.config/systemd/user/mako.service.d' '$HOME/.config/systemd/user/waybar.service.d'"
 for unit in "$REPO_DIR"/config/systemd/user/*.service "$REPO_DIR"/config/systemd/user/*.timer "$REPO_DIR"/config/systemd/user/*.path; do
@@ -196,11 +254,44 @@ else
     log "      Run with --fetch-model (or download from $SILUETA_URL) for Dolphin AI background removal."
 fi
 
-# 6. Enable systemd user units & rebuild KDE service cache
-log "Refreshing systemd user daemon & KIO cache..."
-run "systemctl --user daemon-reload"
-run "systemctl --user mask hyprpolkitagent.service at-spi2-registryd.service at-spi-dbus-bus.service >/dev/null 2>&1 || true"
-run "systemctl --user enable cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service kanagawa-desktop-indexer.path kanagawa-osd-watcher.service kanagawa-polkit.service kanagawa-popups.service kanagawa-updates.timer swayosd-server.service"
+# 6. Optional greetd + kanagawa-greeter setup
+if [[ "$WITH_GREETER" -eq 1 ]]; then
+    log "Configuring greetd + kanagawa-greeter..."
+    if [[ "$SKIP_PKGS" -eq 0 ]]; then
+        if command -v paru >/dev/null 2>&1; then
+            run "paru -S --needed --noconfirm greetd cage"
+        elif command -v yay >/dev/null 2>&1; then
+            run "yay -S --needed --noconfirm greetd cage"
+        else
+            run "sudo pacman -S --needed --noconfirm greetd cage"
+        fi
+    fi
+    install_root_if_changed 644 "$REPO_DIR/assets/backgrounds/kanagawa-greeter.jpg" /usr/share/backgrounds/kanagawa-greeter.jpg
+    install_root_if_changed 644 "$REPO_DIR/system/etc/greetd/config.toml" /etc/greetd/config.toml
+    install_root_if_changed 644 "$REPO_DIR/system/etc/greetd/environments" /etc/greetd/environments
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] render %s -> /etc/greetd/kanagawa-greeter.json\n' "$REPO_DIR/system/etc/greetd/kanagawa-greeter.json.template"
+    else
+        greeter_tmp="$(mktemp)"
+        sed -e "s|__HOME__|$HOME|g" -e "s|__USER__|$USER|g" "$REPO_DIR/system/etc/greetd/kanagawa-greeter.json.template" > "$greeter_tmp"
+        install_root_if_changed 644 "$greeter_tmp" /etc/greetd/kanagawa-greeter.json
+        rm -f "$greeter_tmp"
+    fi
+    run "sudo systemctl enable greetd.service"
+fi
+
+# 7. Enable systemd user units & rebuild KDE service cache
+USER_UNITS="cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service kanagawa-desktop-indexer.path kanagawa-osd-watcher.service kanagawa-polkit.service kanagawa-popups.service kanagawa-updates.timer swayosd-server.service"
+if systemctl --user show-environment >/dev/null 2>&1; then
+    log "Refreshing systemd user daemon & KIO cache..."
+    run "systemctl --user daemon-reload"
+    run "systemctl --user mask hyprpolkitagent.service at-spi2-registryd.service at-spi-dbus-bus.service >/dev/null 2>&1 || true"
+    run "systemctl --user enable $USER_UNITS"
+else
+    log "NOTE: No active systemd --user D-Bus session (e.g. chroot/TTY)."
+    log "      After logging into your graphical session, run:"
+    log "      systemctl --user daemon-reload && systemctl --user enable $USER_UNITS"
+fi
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
     run "kbuildsycoca6 --noincremental >/dev/null 2>&1 || true"
 fi

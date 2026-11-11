@@ -199,7 +199,7 @@ mod tests {
     fn test_demo_authenticate_success() {
         let mut client = DemoGreetd::new();
         let cmd = vec!["start-hyprland".to_string()];
-        let res = authenticate(&mut client, "ineron", "demo", &cmd);
+        let res = authenticate(&mut client, "testuser", "demo", &cmd);
         assert!(res.is_ok());
     }
 
@@ -207,7 +207,7 @@ mod tests {
     fn test_demo_authenticate_wrong_password() {
         let mut client = DemoGreetd::new();
         let cmd = vec!["start-hyprland".to_string()];
-        let res = authenticate(&mut client, "ineron", "wrong", &cmd);
+        let res = authenticate(&mut client, "testuser", "wrong", &cmd);
         assert_eq!(res.unwrap_err(), "Неверный пароль");
     }
 
@@ -242,7 +242,7 @@ mod tests {
             // 1. create_session
             let msg1 = recv_msg(&mut stream);
             assert_eq!(msg1["type"], "create_session");
-            assert_eq!(msg1["username"], "ineron");
+            assert_eq!(msg1["username"], "testuser");
 
             // send auth_message
             send_msg(&mut stream, &serde_json::json!({
@@ -273,7 +273,7 @@ mod tests {
 
         let mut client = RealGreetd::connect().expect("Connection to mock greetd unix socket failed");
         let cmd = vec!["start-hyprland".to_string()];
-        let res = authenticate(&mut client, "ineron", "correct_pass", &cmd);
+        let res = authenticate(&mut client, "testuser", "correct_pass", &cmd);
 
         assert!(res.is_ok());
         srv_handle.join().unwrap();
