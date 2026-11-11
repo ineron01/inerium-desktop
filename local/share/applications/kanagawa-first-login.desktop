@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Первичная настройка
+Name[en]=First-login setup
+Comment=Входы в аккаунты и другие разовые шаги настройки
+Exec=kitty --class kanagawa-first-login --title "Первичная настройка" kanagawa-first-login
+Icon=preferences-system
+Terminal=false
+Categories=Settings;
+Keywords=accounts;login;setup;аккаунты;вход;настройка;

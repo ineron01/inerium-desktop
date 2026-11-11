@@ -249,6 +249,10 @@ for desktop in "$REPO_DIR"/local/share/kio/servicemenus/*.desktop; do
     name="$(basename "$desktop")"
     link_item "$desktop" "$HOME/.local/share/kio/servicemenus/$name"
 done
+for desktop in "$REPO_DIR"/local/share/applications/*.desktop; do
+    link_item "$desktop" "$HOME/.local/share/applications/$(basename "$desktop")"
+done
+run "mkdir -p '${XDG_CONFIG_HOME:-$HOME/.config}/kanagawa/first-login.d'"
 install_root_if_changed 755 "$REPO_DIR/system/usr/local/bin/kanagawa-desktop-indexer" /usr/local/bin/kanagawa-desktop-indexer
 install_sudoers_template "$REPO_DIR/system/etc/sudoers.d/kanagawa-desktop-indexer.template" /etc/sudoers.d/kanagawa-desktop-indexer
 

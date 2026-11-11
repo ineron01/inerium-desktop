@@ -29,4 +29,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/kanagawa-deskto
 ./install.sh --with-greeter --fetch-model
 ```
 
+## First-login setup
+
+`kanagawa-first-login` runs one-time steps (account sign-ins and similar) from `~/.config/kanagawa/first-login.d/` in a floating terminal at the first Hyprland login, remembers completed steps, and re-offers postponed ones on the next login. This repository ships no steps; personal overlays drop executables there (each must exit 0 for `--check` once configured). Re-run anytime from Rofi ("Первичная настройка") or with `kanagawa-first-login --reset`.
+
 Hardware-specific MSI features (`msi-fan-regulator`) are gated behind the `msi-ec` Cargo feature and disabled in the universal workspace build by default. All panels and utilities perform runtime capability detection (`/sys/devices/platform/msi-ec`, `/sys/class/backlight`, `/sys/class/power_supply/`, `/sys/class/net/`, `envycontrol`) and gracefully hide unavailable controls.
