@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Hyprland (Резервная)
+Comment=Резервная сессия Hyprland с Waybar и базовым управлением
+Exec=env HYPR_PROFILE=backup /usr/bin/start-hyprland
+Type=Application
+DesktopNames=Hyprland
+Keywords=tiling;wayland;compositor;backup;

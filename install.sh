@@ -130,13 +130,18 @@ install_sudoers_template() {
 # 1. Install base packages
 if [[ "$SKIP_PKGS" -eq 0 ]]; then
     log "Installing base packages from pkglist-base.txt..."
+    if ! command -v paru >/dev/null 2>&1 && ! command -v yay >/dev/null 2>&1; then
+        if pacman -Si paru >/dev/null 2>&1; then
+            run "sudo pacman -Sy --needed --noconfirm paru"
+        fi
+    fi
     PKGS=$(grep -vE '^\s*(#|$)' "$REPO_DIR/pkglist-base.txt" | tr '\n' ' ')
     if command -v paru >/dev/null 2>&1; then
-        run "paru -S --needed --noconfirm $PKGS"
+        run "paru -Sy --needed --noconfirm $PKGS"
     elif command -v yay >/dev/null 2>&1; then
-        run "yay -S --needed --noconfirm $PKGS"
+        run "yay -Sy --needed --noconfirm $PKGS"
     else
-        run "sudo pacman -S --needed --noconfirm $PKGS"
+        run "sudo pacman -Sy --needed --noconfirm $PKGS"
     fi
     if [[ ! -d /usr/share/icons/Bibata-Modern-Ice && ! -d "$HOME/.local/share/icons/Bibata-Modern-Ice" ]]; then
         if command -v paru >/dev/null 2>&1; then
@@ -147,6 +152,11 @@ if [[ "$SKIP_PKGS" -eq 0 ]]; then
             log "NOTE: Bibata-Modern-Ice cursor theme not found (AUR: bibata-cursor-theme-bin)."
         fi
     fi
+    for svc in NetworkManager.service bluetooth.service power-profiles-daemon.service; do
+        if systemctl list-unit-files "$svc" >/dev/null 2>&1; then
+            run "sudo systemctl enable '$svc' >/dev/null 2>&1 || true"
+        fi
+    done
 fi
 
 # 2. Build Rust workspace + standalone kanagawa-polkit
@@ -254,7 +264,12 @@ else
     log "      Run with --fetch-model (or download from $SILUETA_URL) for Dolphin AI background removal."
 fi
 
-# 6. Optional greetd + kanagawa-greeter setup
+# 6. Wayland session entries & optional greetd + kanagawa-greeter setup
+for sess in "$REPO_DIR"/system/usr/share/wayland-sessions/*.desktop; do
+    [[ -f "$sess" ]] || continue
+    install_root_if_changed 644 "$sess" "/usr/share/wayland-sessions/$(basename "$sess")"
+done
+
 if [[ "$WITH_GREETER" -eq 1 ]]; then
     log "Configuring greetd + kanagawa-greeter..."
     if [[ "$SKIP_PKGS" -eq 0 ]]; then
@@ -280,17 +295,27 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
     run "sudo systemctl enable greetd.service"
 fi
 
-# 7. Enable systemd user units & rebuild KDE service cache
+# 7. Enable systemd user units (live D-Bus or offline TTY symlink fallback) & rebuild KDE cache
 USER_UNITS="cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service kanagawa-desktop-indexer.path kanagawa-osd-watcher.service kanagawa-polkit.service kanagawa-popups.service kanagawa-updates.timer swayosd-server.service"
+MASK_UNITS="hyprpolkitagent.service at-spi2-registryd.service at-spi-dbus-bus.service"
 if systemctl --user show-environment >/dev/null 2>&1; then
-    log "Refreshing systemd user daemon & KIO cache..."
+    log "Refreshing systemd user daemon & enabling user services..."
     run "systemctl --user daemon-reload"
-    run "systemctl --user mask hyprpolkitagent.service at-spi2-registryd.service at-spi-dbus-bus.service >/dev/null 2>&1 || true"
+    run "systemctl --user mask $MASK_UNITS >/dev/null 2>&1 || true"
     run "systemctl --user enable $USER_UNITS"
 else
-    log "NOTE: No active systemd --user D-Bus session (e.g. chroot/TTY)."
-    log "      After logging into your graphical session, run:"
-    log "      systemctl --user daemon-reload && systemctl --user enable $USER_UNITS"
+    log "No active systemd --user D-Bus session (TTY/chroot); creating offline .wants/mask links..."
+    run "mkdir -p '$HOME/.config/systemd/user/default.target.wants' '$HOME/.config/systemd/user/timers.target.wants' '$HOME/.config/systemd/user/paths.target.wants'"
+    for m in $MASK_UNITS; do
+        run "ln -sfn /dev/null '$HOME/.config/systemd/user/$m'"
+    done
+    for u in $USER_UNITS; do
+        case "$u" in
+            *.timer) run "ln -sfn '$HOME/.config/systemd/user/$u' '$HOME/.config/systemd/user/timers.target.wants/$u'" ;;
+            *.path)  run "ln -sfn '$HOME/.config/systemd/user/$u' '$HOME/.config/systemd/user/paths.target.wants/$u'" ;;
+            *)       run "ln -sfn '$HOME/.config/systemd/user/$u' '$HOME/.config/systemd/user/default.target.wants/$u'" ;;
+        esac
+    done
 fi
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
     run "kbuildsycoca6 --noincremental >/dev/null 2>&1 || true"

@@ -11,6 +11,7 @@ Universal CachyOS / Arch Linux desktop environment built around **Hyprland (Lua 
 - `system/` — System-wide `kanagawa-desktop-indexer`, `greetd` templates (`--with-greeter`), and `sudoers.d` rule
 - `assets/` — Default wallpapers (`assets/wallpapers/`) and greeter background (`assets/backgrounds/`)
 - `pkglist-base.txt` — Base Arch/CachyOS packages
+- `bootstrap.sh` — One-command TTY bootstrapper (installs `git`, clones repo, runs `install.sh --with-greeter --fetch-model`)
 - `install.sh` — Universal idempotent installer (`--dry-run`, `--skip-pkgs`, `--skip-build`, `--fetch-model`, `--with-greeter`)
 
 ## Quick Start

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Hyprland (Waybar)
+Comment=Hyprland desktop managed by UWSM
+Exec=uwsm start -e -D Hyprland hyprland.desktop
+TryExec=uwsm
+DesktopNames=Hyprland
+Type=Application
+Keywords=tiling;wayland;compositor;uwsm;
