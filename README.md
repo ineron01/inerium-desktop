@@ -16,10 +16,10 @@ Universal CachyOS / Arch Linux desktop environment built around **Hyprland (Lua 
 
 ## Quick Start
 
-**Fresh TTY one-line bootstrap (Arch / CachyOS):**
+**Fresh TTY one-line bootstrap (Arch / CachyOS; works in fish and bash):**
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ineron01/kanagawa-desktop/main/bootstrap.sh)
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/kanagawa-desktop/main/bootstrap.sh)"
 ```
 
 **Local / manual run:**
