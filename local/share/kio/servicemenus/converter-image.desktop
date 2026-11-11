@@ -1,0 +1,75 @@
+[Desktop Entry]
+Type=Service
+Name=Image Converter
+Name[ru]=Конвертер изображений
+MimeType=image/*;
+Actions=ToPng;ToPngNoBg;ToJpg;ToWebp;ToAvif;ToJxl;ToGif;ToIco;ToBmp;ToTiff;ToPdf;
+X-KDE-Submenu=Convert to...
+X-KDE-Submenu[ru]=Конвертировать в...
+Icon=transform-scale
+
+[Desktop Action ToPng]
+Name=PNG
+Name[ru]=PNG
+Icon=image-png
+Exec=dolphin-convert --format png %F
+
+[Desktop Action ToPngNoBg]
+Name=PNG (No Background AI)
+Name[ru]=PNG (без фона AI)
+Icon=edit-cut
+Exec=dolphin-convert --to png-nobg %F
+
+[Desktop Action ToJpg]
+Name=JPEG / JPG
+Name[ru]=JPEG / JPG
+Icon=image-jpeg
+Exec=dolphin-convert --format jpg %F
+
+[Desktop Action ToWebp]
+Name=WebP
+Name[ru]=WebP
+Icon=image-x-generic
+Exec=dolphin-convert --format webp %F
+
+[Desktop Action ToAvif]
+Name=AVIF
+Name[ru]=AVIF
+Icon=image-x-generic
+Exec=dolphin-convert --format avif %F
+
+[Desktop Action ToJxl]
+Name=JPEG XL (JXL)
+Name[ru]=JPEG XL (JXL)
+Icon=image-x-generic
+Exec=dolphin-convert --format jxl %F
+
+[Desktop Action ToGif]
+Name=GIF
+Name[ru]=GIF
+Icon=image-gif
+Exec=dolphin-convert --format gif %F
+
+[Desktop Action ToIco]
+Name=ICO (Иконка)
+Name[ru]=ICO (Иконка)
+Icon=image-x-ico
+Exec=dolphin-convert --format ico %F
+
+[Desktop Action ToBmp]
+Name=BMP
+Name[ru]=BMP
+Icon=image-bmp
+Exec=dolphin-convert --format bmp %F
+
+[Desktop Action ToTiff]
+Name=TIFF
+Name[ru]=TIFF
+Icon=image-tiff
+Exec=dolphin-convert --format tiff %F
+
+[Desktop Action ToPdf]
+Name=PDF
+Name[ru]=PDF
+Icon=application-pdf
+Exec=dolphin-convert --format pdf %F

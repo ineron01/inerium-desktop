@@ -1,0 +1,21 @@
+# ============================================================================
+# Universal Wayland Session Manager (UWSM) — Окружение для композитора Hyprland
+# ============================================================================
+
+# Профиль запуска Hyprland
+export HYPR_PROFILE="waybar"
+
+# Синхронизация тем и размеров аппаратного и программного курсора
+export HYPRCURSOR_THEME="Bibata-Modern-Ice"
+export HYPRCURSOR_SIZE="24"
+export XCURSOR_THEME="Bibata-Modern-Ice"
+export XCURSOR_SIZE="24"
+
+# Переменные, автоматически экспортируемые в systemd user manager через uwsm finalize
+export UWSM_FINALIZE_VARNAMES="HYPRLAND_INSTANCE_SIGNATURE"
+
+# Опциональные параметры аппаратного ускорения NVIDIA (принудительный dGPU режим):
+# export GBM_BACKEND="nvidia-drm"
+# export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+# export LIBVA_DRIVER_NAME="nvidia"
+# export __GL_GSYNC_ALLOWED="1"

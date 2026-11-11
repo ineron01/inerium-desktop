@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# ============================================================================
+# РЕЗЕРВНАЯ СЕССИЯ (BACKUP SESSION) — УПРАВЛЕНИЕ РЕЗЕРВНОЙ ПАНЕЛЬЮ WAYBAR
+# ============================================================================
+set -euo pipefail
+
+TARGET="${1:-toggle}"
+CONFIG="$HOME/.config/waybar/config_backup.jsonc"
+STYLE="$HOME/.config/waybar/style_backup.css"
+
+case "$TARGET" in
+    toggle)
+        if pgrep -x waybar >/dev/null 2>&1; then
+            killall -SIGUSR1 waybar 2>/dev/null || true
+        else
+            setsid waybar -c "$CONFIG" -s "$STYLE" >/dev/null 2>&1 &
+            notify-send -a "Панель (Резерв)" -i "preferences-system" "Панель" "Резервный Waybar запущен"
+        fi
+        ;;
+    reload)
+        killall -SIGUSR2 waybar 2>/dev/null || true
+        notify-send -a "Панель (Резерв)" -i "preferences-system" "Панель" "Конфигурация резервной панели перезагружена"
+        ;;
+    restart)
+        pkill -x waybar 2>/dev/null || true
+        sleep 0.2
+        setsid waybar -c "$CONFIG" -s "$STYLE" >/dev/null 2>&1 &
+        notify-send -a "Панель (Резерв)" -i "preferences-system" "Панель" "Резервный Waybar перезапущен"
+        ;;
+    *)
+        echo "Usage: $0 {toggle|reload|restart}"
+        exit 1
+        ;;
+esac

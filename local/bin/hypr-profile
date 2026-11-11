@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# ============================================================================
+# Переключатель профилей Hyprland: основная (waybar) и резервная (backup)
+# ============================================================================
+set -euo pipefail
+
+PROFILE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/profile"
+
+get_profile() {
+    if [[ -f "$PROFILE_FILE" ]]; then
+        local p
+        p=$(tr -d '[:space:]' < "$PROFILE_FILE")
+        if [[ -n "$p" ]]; then
+            echo "$p"
+            return
+        fi
+    fi
+    echo "waybar"
+}
+
+set_profile() {
+    local target="$1"
+    mkdir -p "$(dirname "$PROFILE_FILE")"
+    echo "$target" > "$PROFILE_FILE"
+    echo "Active profile set to: $target"
+}
+
+case "${1:-}" in
+    get|"")
+        echo "Current profile: $(get_profile)"
+        ;;
+    set)
+        if [[ -z "${2:-}" ]]; then
+            echo "Error: specify profile name ('waybar' or 'backup')"
+            exit 1
+        fi
+        set_profile "$2"
+        ;;
+    toggle)
+        curr=$(get_profile)
+        if [[ "$curr" == "waybar" ]]; then
+            set_profile "backup"
+        else
+            set_profile "waybar"
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {get|set <name>|toggle}"
+        exit 1
+        ;;
+esac

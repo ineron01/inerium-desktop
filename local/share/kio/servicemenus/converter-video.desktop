@@ -1,0 +1,63 @@
+[Desktop Entry]
+Type=Service
+Name=Video Converter
+Name[ru]=Конвертер видео
+MimeType=video/*;
+Actions=ToMp4;ToWebm;ToMkv;ToGif;ToMp3;ToWav;ToFlac;ToAvi;ToMov;
+X-KDE-Submenu=Convert to...
+X-KDE-Submenu[ru]=Конвертировать в...
+Icon=transform-scale
+
+[Desktop Action ToMp4]
+Name=MP4 (H.264 / AAC)
+Name[ru]=MP4 (H.264 / AAC)
+Icon=video-mp4
+Exec=dolphin-convert --format mp4 %F
+
+[Desktop Action ToWebm]
+Name=WebM (VP9 / Opus)
+Name[ru]=WebM (VP9 / Opus)
+Icon=video-webm
+Exec=dolphin-convert --format webm %F
+
+[Desktop Action ToMkv]
+Name=MKV (Matroska)
+Name[ru]=MKV (Matroska)
+Icon=video-x-matroska
+Exec=dolphin-convert --format mkv %F
+
+[Desktop Action ToGif]
+Name=GIF (Анимация 15fps)
+Name[ru]=GIF (Анимация 15fps)
+Icon=image-gif
+Exec=dolphin-convert --format gif %F
+
+[Desktop Action ToMp3]
+Name=MP3 (Извлечь аудио)
+Name[ru]=MP3 (Извлечь аудио)
+Icon=audio-mp3
+Exec=dolphin-convert --format mp3 %F
+
+[Desktop Action ToWav]
+Name=WAV (Извлечь аудио)
+Name[ru]=WAV (Извлечь аудио)
+Icon=audio-x-wav
+Exec=dolphin-convert --format wav %F
+
+[Desktop Action ToFlac]
+Name=FLAC (Извлечь аудио)
+Name[ru]=FLAC (Извлечь аудио)
+Icon=audio-x-flac
+Exec=dolphin-convert --format flac %F
+
+[Desktop Action ToAvi]
+Name=AVI
+Name[ru]=AVI
+Icon=video-x-msvideo
+Exec=dolphin-convert --format avi %F
+
+[Desktop Action ToMov]
+Name=MOV (QuickTime)
+Name[ru]=MOV (QuickTime)
+Icon=video-quicktime
+Exec=dolphin-convert --format mov %F

@@ -1,0 +1,8 @@
+[server]
+style = "__HOME__/.config/swayosd/style.css"
+top_margin = 0.82
+max_volume = 150
+min_brightness = 5
+show_percentage = true
+duration = 1200
+keyboard_backlight = true

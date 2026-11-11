@@ -1,0 +1,39 @@
+[Desktop Entry]
+Type=Service
+Name=PDF Converter
+Name[ru]=Конвертер PDF
+MimeType=application/pdf;
+Actions=ToPng;ToJpg;ToTxt;ToDocx;ToOdt;
+X-KDE-Submenu=Convert to...
+X-KDE-Submenu[ru]=Конвертировать в...
+Icon=transform-scale
+
+[Desktop Action ToPng]
+Name=PNG (Изображения страниц)
+Name[ru]=PNG (Изображения страниц)
+Icon=image-png
+Exec=dolphin-convert --format png %F
+
+[Desktop Action ToJpg]
+Name=JPEG (Изображения страниц)
+Name[ru]=JPEG (Изображения страниц)
+Icon=image-jpeg
+Exec=dolphin-convert --format jpg %F
+
+[Desktop Action ToTxt]
+Name=TXT (Извлечь текст)
+Name[ru]=TXT (Извлечь текст)
+Icon=text-plain
+Exec=dolphin-convert --format txt %F
+
+[Desktop Action ToDocx]
+Name=DOCX (Word)
+Name[ru]=DOCX (Word)
+Icon=application-vnd.openxmlformats-officedocument.wordprocessingml.document
+Exec=dolphin-convert --format docx %F
+
+[Desktop Action ToOdt]
+Name=ODT (LibreOffice)
+Name[ru]=ODT (LibreOffice)
+Icon=application-vnd.oasis.opendocument.text
+Exec=dolphin-convert --format odt %F

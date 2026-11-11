@@ -1,0 +1,18 @@
+[Unit]
+Description=Cliphist clipboard history daemon (images)
+Documentation=https://github.com/sentriz/cliphist
+PartOf=graphical-session.target
+After=graphical-session.target
+BindsTo=graphical-session.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecCondition=/bin/sh -c '[ -n "$WAYLAND_DISPLAY" ]'
+ExecStart=/usr/bin/wl-paste --type image --watch cliphist -max-items 100 store
+Restart=always
+RestartSec=1
+Slice=app-graphical.slice
+
+[Install]
+WantedBy=graphical-session.target

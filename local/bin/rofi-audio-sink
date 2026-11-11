@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+import subprocess
+import os
+import sys
+
+ROFI_THEME = os.path.expanduser("~/.config/rofi/applet.rasi")
+
+def run_cmd(cmd):
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        return res.stdout.strip()
+    except subprocess.CalledProcessError:
+        return ""
+
+def notify(title, msg, icon="audio-speakers"):
+    subprocess.run(["notify-send", "-a", "Аудио", "-i", icon, title, msg])
+
+def rofi(options, prompt="Вывод звука"):
+    cmd = ["rofi", "-dmenu", "-p", prompt, "-theme", ROFI_THEME]
+    proc = subprocess.run(cmd, input="\n".join(options), stdout=subprocess.PIPE, text=True)
+    return proc.stdout.strip()
+
+def get_sinks():
+    default_sink = run_cmd(["pactl", "get-default-sink"])
+    raw = run_cmd(["pactl", "list", "sinks"])
+    sinks = []
+    current = {}
+    for line in raw.splitlines():
+        line = line.strip()
+        if line.startswith("Sink #"):
+            if current:
+                sinks.append(current)
+            current = {"id": line.split("#")[1].strip()}
+        elif line.startswith("Name: "):
+            current["name"] = line[6:].strip()
+        elif line.startswith("Description: "):
+            current["desc"] = line[13:].strip()
+    if current:
+        sinks.append(current)
+
+    for s in sinks:
+        s["is_default"] = (s.get("name") == default_sink)
+    return sinks
+
+def main():
+    sinks = get_sinks()
+    if not sinks:
+        notify("Аудио", "Устройства вывода звука не найдены", icon="dialog-error")
+        return
+
+    options = []
+    sink_map = {}
+
+    for s in sinks:
+        desc = s.get("desc", s.get("name", "Неизвестное устройство"))
+        desc_l = desc.lower()
+        if any(w in desc_l for w in ["headphone", "buds", "headset", "ear"]):
+            icon = "󰋋"
+        elif any(w in desc_l for w in ["hdmi", "displayport", "tv"]):
+            icon = "󰡁"
+        else:
+            icon = "󰕾"
+
+        if s["is_default"]:
+            label = f"  {icon}  {desc}  [Текущий]"
+        else:
+            label = f"   {icon}  {desc}"
+
+        options.append(label)
+        sink_map[label] = s
+
+    # Опция для открытия полного микшера
+    options.append("󰍰  Открыть полный микшер (Pavucontrol)")
+
+    chosen = rofi(options, prompt="Выбор вывода")
+    if not chosen:
+        return
+
+    if "Pavucontrol" in chosen:
+        subprocess.Popen(["pavucontrol"])
+        return
+
+    if chosen in sink_map:
+        target = sink_map[chosen]
+        target_name = target["name"]
+        target_desc = target.get("desc", target_name)
+
+        # Устанавливаем целевой sink
+        subprocess.run(["pactl", "set-default-sink", target_name])
+
+        # Перенаправляем все активные аудиопотоки
+        inputs = run_cmd(["pactl", "list", "short", "sink-inputs"]).splitlines()
+        for inp in inputs:
+            parts = inp.split()
+            if parts:
+                subprocess.run(["pactl", "move-sink-input", parts[0], target_name])
+
+        notify("Вывод звука", f"Переключено на:\n{target_desc}", icon="audio-speakers")
+
+if __name__ == "__main__":
+    main()

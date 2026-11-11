@@ -1,0 +1,43 @@
+# Mako — Kanagawa Dragon, в стиле Центра управления и попапов
+font=JetBrainsMono Nerd Font 10
+width=360
+background-color=#181616f7
+text-color=#c5c9c5
+border-color=#c5c9c51a
+border-size=1
+border-radius=16
+padding=12,14
+margin=8,8,0,8
+outer-margin=4,0,0,0
+icon-border-radius=10
+max-icon-size=40
+icons=1
+actions=1
+progress-color=over #87a98766
+format=<b>%s</b>\n<span color="#a6a69c">%b</span>
+default-timeout=5000
+layer=overlay
+anchor=top-right
+
+# Без истории / центра уведомлений
+history=0
+max-history=0
+
+[urgency=low]
+border-color=#c5c9c512
+format=<span color="#a6a69c"><b>%s</b></span>\n<span color="#737c73">%b</span>
+default-timeout=3000
+
+[urgency=normal]
+default-timeout=5000
+
+[urgency=high]
+border-color=#c4746e99
+format=<span color="#c4746e"><b>%s</b></span>\n%b
+default-timeout=0
+
+[mode=dnd]
+invisible=1
+
+[mode=do-not-disturb]
+invisible=1

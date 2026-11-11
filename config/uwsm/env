@@ -1,0 +1,26 @@
+# ============================================================================
+# Universal Wayland Session Manager (UWSM) — Общие переменные окружения сессии
+# ============================================================================
+
+# Каталог пользовательских бинарников в PATH для окружения сессии и systemd
+export PATH="$HOME/.local/bin:$PATH"
+
+# Базовые приложения по умолчанию
+export BROWSER="firefox"
+export TERM="xterm-kitty"
+
+# Интеграция графических тулкитов (Qt, GTK)
+export QT_QPA_PLATFORM="wayland;xcb"
+export QT_QPA_PLATFORMTHEME="qt6ct"
+export QT_STYLE_OVERRIDE="Fusion"
+export COLOR_SCHEME="prefer-dark"
+export GTK_USE_PORTAL="1"
+
+# Интеграция браузеров, Electron и Java под Wayland
+export MOZ_ENABLE_WAYLAND="1"
+export ELECTRON_OZONE_PLATFORM_HINT="auto"
+export _JAVA_AWT_WM_NONREPARENTING="1"
+
+# Диалог подтверждения пароля (Askpass) в стиле Kanagawa Dragon
+export SUDO_ASKPASS="$HOME/.local/bin/kanagawa-askpass"
+export SSH_ASKPASS="$HOME/.local/bin/kanagawa-askpass"

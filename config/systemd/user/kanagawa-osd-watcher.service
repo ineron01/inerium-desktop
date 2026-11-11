@@ -1,0 +1,14 @@
+[Unit]
+Description=Kanagawa OSD watcher (keyboard layout, webcam)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/kanagawa-osd-watcher
+Restart=on-failure
+RestartSec=1
+Slice=background-graphical.slice
+
+[Install]
+WantedBy=graphical-session.target

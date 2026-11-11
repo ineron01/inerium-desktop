@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# ============================================================================
+# МЕНЮ ПИТАНИЯ И СЕССИИ (ROFI)
+# Поддерживает флаг --backup для использования резервной темы Rofi.
+# ============================================================================
+set -euo pipefail
+
+theme=~/.config/rofi/kanagawa.rasi
+for arg in "$@"; do
+    if [ "$arg" = "--backup" ] || [ "$arg" = "-b" ]; then
+        theme=~/.config/rofi/kanagawa_backup.rasi
+    fi
+done
+
+chosen=$(echo -e "󰌾  Заблокировать экран\n󰍃  Выйти из сессии\n󰒲  Спящий режим\n󰜉  Перезагрузка\n󰐥  Выключение" | rofi -theme "$theme" -dmenu -i -p "Сессия")
+
+case "$chosen" in
+    *Заблокировать*)
+        hyprlock || loginctl lock-session
+        ;;
+    *Выйти*)
+        if uwsm check is-active >/dev/null 2>&1; then
+            uwsm stop
+        else
+            env -u HYPRLAND_INSTANCE_SIGNATURE hyprctl dispatch exit 2>/dev/null || hyprctl dispatch exit 2>/dev/null || loginctl terminate-session "$XDG_SESSION_ID"
+        fi
+        ;;
+    *Спящий*)
+        systemctl suspend
+        ;;
+    *Перезагрузка*)
+        systemctl reboot
+        ;;
+    *Выключение*)
+        systemctl poweroff
+        ;;
+esac

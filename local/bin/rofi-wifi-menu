@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+import subprocess
+import sys
+import os
+
+ROFI_THEME = os.path.expanduser("~/.config/rofi/applet.rasi")
+
+def run_cmd(cmd):
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        return res.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        return ""
+
+def notify(title, msg, icon="network-wireless"):
+    subprocess.run(["notify-send", "-a", "Wi-Fi", "-i", icon, title, msg])
+
+def get_wifi_device():
+    import glob
+    for d in glob.glob("/sys/class/net/*"):
+        if os.path.exists(os.path.join(d, "wireless")):
+            return os.path.basename(d)
+    return "wlp4s0"
+
+def rofi(options, prompt="Wi-Fi", active_row=None, is_password=False):
+    cmd = ["rofi", "-dmenu", "-p", prompt, "-theme", ROFI_THEME]
+    if active_row is not None:
+        cmd.extend(["-selected-row", str(active_row)])
+    if is_password:
+        cmd.extend(["-password"])
+    
+    input_str = "\n".join(options)
+    proc = subprocess.run(cmd, input=input_str, stdout=subprocess.PIPE, text=True)
+    return proc.stdout.strip()
+
+def main():
+    wifi_state = run_cmd(["nmcli", "radio", "wifi"])
+    if wifi_state != "enabled":
+        chosen = rofi(["󰖩  Включить Wi-Fi"], prompt="Wi-Fi (выкл)")
+        if "Включить" in chosen:
+            subprocess.run(["nmcli", "radio", "wifi", "on"])
+            notify("Wi-Fi", "Wi-Fi адаптер включен")
+        return
+
+    # Получаем список сетей
+    raw = run_cmd(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list"])
+    networks = {}
+    connected_ssid = None
+
+    for line in raw.splitlines():
+        parts = line.split(":")
+        if len(parts) < 4:
+            continue
+        in_use = parts[0].strip()
+        ssid = parts[1].strip()
+        if not ssid:
+            continue
+        try:
+            signal = int(parts[2].strip())
+        except ValueError:
+            signal = 0
+        security = parts[3].strip()
+
+        if in_use == "*":
+            connected_ssid = ssid
+
+        if ssid not in networks or signal > networks[ssid]["signal"]:
+            networks[ssid] = {
+                "signal": signal,
+                "security": security,
+                "connected": (in_use == "*")
+            }
+
+    options = []
+    # Быстрые действия
+    options.append("󰑐  Обновить список")
+    if connected_ssid:
+        options.append(f"󰤮  Отключиться от \"{connected_ssid}\"")
+    options.append("󰖪  Выключить Wi-Fi")
+
+    # Сортируем сети по сигналу
+    sorted_nets = sorted(networks.items(), key=lambda x: (not x[1]["connected"], -x[1]["signal"]))
+
+    net_map = {}
+    for ssid, info in sorted_nets:
+        sig = info["signal"]
+        if sig >= 75:
+            icon = "󰤨"
+        elif sig >= 50:
+            icon = "󰤥"
+        elif sig >= 25:
+            icon = "󰤢"
+        else:
+            icon = "󰤟"
+
+        sec_icon = "" if info["security"] and info["security"] != "--" else ""
+        if info["connected"]:
+            label = f"  {icon}  {ssid}  ({sig}%)  {sec_icon} [Подключено]"
+        else:
+            label = f"   {icon}  {ssid}  ({sig}%)  {sec_icon}"
+
+        options.append(label)
+        net_map[label] = (ssid, info)
+
+    chosen = rofi(options, prompt="Сети Wi-Fi")
+    if not chosen:
+        return
+
+    if "Обновить" in chosen:
+        run_cmd(["nmcli", "device", "wifi", "rescan"])
+        # Перезапуск скрипта
+        os.execv(sys.argv[0], sys.argv)
+    elif "Выключить Wi-Fi" in chosen:
+        subprocess.run(["nmcli", "radio", "wifi", "off"])
+        notify("Wi-Fi", "Wi-Fi адаптер выключен")
+    elif "Отключиться от" in chosen:
+        if connected_ssid:
+            subprocess.run(["nmcli", "device", "disconnect", get_wifi_device()])
+            notify("Wi-Fi", f"Отключено от {connected_ssid}")
+    elif chosen in net_map:
+        target_ssid, info = net_map[chosen]
+        if info["connected"]:
+            # Уже подключен
+            notify("Wi-Fi", f"Уже подключено к {target_ssid}")
+            return
+
+        # Проверяем, есть ли сохраненное соединение
+        saved = run_cmd(["nmcli", "-g", "NAME", "connection"]).splitlines()
+        if target_ssid in saved:
+            notify("Wi-Fi", f"Подключение к \"{target_ssid}\"...")
+            res = subprocess.run(["nmcli", "connection", "up", target_ssid], capture_output=True, text=True)
+            if res.returncode == 0:
+                notify("Wi-Fi", f"Успешно подключено к \"{target_ssid}\"")
+            else:
+                notify("Ошибка", f"Не удалось подключиться: {res.stderr.strip()}", icon="dialog-error")
+        else:
+            # Требуется ли пароль
+            pwd = ""
+            if info["security"] and info["security"] != "--":
+                pwd = rofi([], prompt=f"Пароль для {target_ssid}", is_password=True)
+                if not pwd:
+                    return
+
+            notify("Wi-Fi", f"Подключение к \"{target_ssid}\"...")
+            cmd = ["nmcli", "device", "wifi", "connect", target_ssid]
+            if pwd:
+                cmd.extend(["password", pwd])
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0:
+                notify("Wi-Fi", f"Успешно подключено к \"{target_ssid}\"")
+            else:
+                notify("Ошибка", f"Ошибка подключения: {res.stderr.strip()}", icon="dialog-error")
+
+if __name__ == "__main__":
+    main()

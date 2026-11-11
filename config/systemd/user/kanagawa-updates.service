@@ -1,0 +1,8 @@
+[Unit]
+Description=Kanagawa Background Package Updates Cache Updater
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/kanagawa-updates --check
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle

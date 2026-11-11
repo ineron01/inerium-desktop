@@ -1,0 +1,15 @@
+configuration {
+    show-icons: true;
+    disable-history: true;
+    hover-select: true;
+    me-select-entry: "";
+    me-accept-entry: "MousePrimary";
+}
+
+@theme "~/.config/rofi/kanagawa.rasi"
+
+/* Буфер обмена: шире, крупные превью картинок */
+window { width: 680px; }
+entry { placeholder: "Поиск в истории буфера…"; }
+listview { lines: 7; }
+element-icon { size: 40px; }

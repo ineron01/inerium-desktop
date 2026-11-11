@@ -1,0 +1,45 @@
+[Desktop Entry]
+Type=Service
+Name=Audio Converter
+Name[ru]=Конвертер аудио
+MimeType=audio/*;
+Actions=ToMp3;ToFlac;ToWav;ToOgg;ToOpus;ToM4a;
+X-KDE-Submenu=Convert to...
+X-KDE-Submenu[ru]=Конвертировать в...
+Icon=transform-scale
+
+[Desktop Action ToMp3]
+Name=MP3 (320 kbps)
+Name[ru]=MP3 (320 kbps)
+Icon=audio-mp3
+Exec=dolphin-convert --format mp3 %F
+
+[Desktop Action ToFlac]
+Name=FLAC (Без потерь)
+Name[ru]=FLAC (Без потерь)
+Icon=audio-x-flac
+Exec=dolphin-convert --format flac %F
+
+[Desktop Action ToWav]
+Name=WAV (PCM 16-bit)
+Name[ru]=WAV (PCM 16-bit)
+Icon=audio-x-wav
+Exec=dolphin-convert --format wav %F
+
+[Desktop Action ToOgg]
+Name=OGG (Vorbis q6)
+Name[ru]=OGG (Vorbis q6)
+Icon=audio-x-vorbis+ogg
+Exec=dolphin-convert --format ogg %F
+
+[Desktop Action ToOpus]
+Name=OPUS
+Name[ru]=OPUS
+Icon=audio-x-opus+ogg
+Exec=dolphin-convert --format opus %F
+
+[Desktop Action ToM4a]
+Name=M4A / AAC (256 kbps)
+Name[ru]=M4A / AAC (256 kbps)
+Icon=audio-mp4
+Exec=dolphin-convert --format m4a %F

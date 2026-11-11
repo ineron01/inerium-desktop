@@ -1,0 +1,21 @@
+/**
+ * ============================================================================
+ * [РЕЗЕРВНАЯ СЕССИЯ / BACKUP SESSION] — КОНФИГУРАЦИЯ БУФЕРА ОБМЕНА ROFI
+ * ============================================================================
+ **/
+
+configuration {
+    show-icons: true;
+    disable-history: true;
+    hover-select: true;
+    me-select-entry: "";
+    me-accept-entry: "MousePrimary";
+}
+
+@theme "~/.config/rofi/kanagawa_backup.rasi"
+
+/* Буфер обмена: расширенная карточка, превью изображений */
+window { width: 680px; }
+entry { placeholder: "Поиск в истории буфера (Резервная сессия)…"; }
+listview { lines: 7; }
+element-icon { size: 40px; }

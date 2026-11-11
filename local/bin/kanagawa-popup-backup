@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# ============================================================================
+# РЕЗЕРВНАЯ СЕССИЯ (BACKUP SESSION) — ВЫЗОВ ВСПЛЫВАЮЩИХ ОКОН И МЕНЮ
+# Вызов нативного kanagawa-popup с автоматическим fallback на Rofi-апплеты
+# ============================================================================
+set -euo pipefail
+
+cmd="${1:-control}"
+
+# Пробуем нативный GTK4-попап
+if $HOME/.local/bin/kanagawa-popup "$@" 2>/dev/null; then
+    exit 0
+fi
+
+# АВАРИЙНЫЙ FALLBACK (если kanagawa-shell не отвечает, сломан или упал)
+case "$cmd" in
+    power)
+        exec $HOME/.local/bin/rofi-power-menu-backup
+        ;;
+    network)
+        exec $HOME/.local/bin/rofi-wifi-menu
+        ;;
+    bluetooth)
+        exec $HOME/.local/bin/rofi-bluetooth
+        ;;
+    audio)
+        command -v pavucontrol >/dev/null 2>&1 && exec pavucontrol || exec $HOME/.local/bin/rofi-audio-sink
+        ;;
+    control)
+        exec $HOME/.local/bin/rofi-power-menu-backup
+        ;;
+    *)
+        exec rofi -theme ~/.config/rofi/kanagawa_backup.rasi -show drun
+        ;;
+esac

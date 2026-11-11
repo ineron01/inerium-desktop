@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/kanagawa-tools",
+    "crates/kanagawa-shell",
+    "crates/kanagawa-greeter",
+    "crates/dolphin-converter",
+]
+exclude = [
+    "standalone/kanagawa-polkit",
+]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+panic = "abort"
+strip = true

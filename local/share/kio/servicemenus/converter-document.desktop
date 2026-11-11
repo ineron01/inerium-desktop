@@ -1,0 +1,51 @@
+[Desktop Entry]
+Type=Service
+Name=Document Converter
+Name[ru]=Конвертер документов
+MimeType=application/vnd.oasis.opendocument.text;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/msword;text/plain;text/markdown;text/html;application/rtf;application/epub+zip;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.ms-powerpoint;application/vnd.oasis.opendocument.presentation;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.ms-excel;application/vnd.oasis.opendocument.spreadsheet;text/x-typst;
+Actions=ToPdf;ToDocx;ToOdt;ToTxt;ToHtml;ToMd;ToEpub;
+X-KDE-Submenu=Convert to...
+X-KDE-Submenu[ru]=Конвертировать в...
+Icon=transform-scale
+
+[Desktop Action ToPdf]
+Name=PDF Документ
+Name[ru]=PDF Документ
+Icon=application-pdf
+Exec=dolphin-convert --format pdf %F
+
+[Desktop Action ToDocx]
+Name=DOCX (Word)
+Name[ru]=DOCX (Word)
+Icon=application-vnd.openxmlformats-officedocument.wordprocessingml.document
+Exec=dolphin-convert --format docx %F
+
+[Desktop Action ToOdt]
+Name=ODT (LibreOffice)
+Name[ru]=ODT (LibreOffice)
+Icon=application-vnd.oasis.opendocument.text
+Exec=dolphin-convert --format odt %F
+
+[Desktop Action ToTxt]
+Name=TXT (Простой текст)
+Name[ru]=TXT (Простой текст)
+Icon=text-plain
+Exec=dolphin-convert --format txt %F
+
+[Desktop Action ToHtml]
+Name=HTML (Веб-страница)
+Name[ru]=HTML (Веб-страница)
+Icon=text-html
+Exec=dolphin-convert --format html %F
+
+[Desktop Action ToMd]
+Name=Markdown (MD)
+Name[ru]=Markdown (MD)
+Icon=text-markdown
+Exec=dolphin-convert --format md %F
+
+[Desktop Action ToEpub]
+Name=EPUB (Электронная книга)
+Name[ru]=EPUB (Электронная книга)
+Icon=application-epub+zip
+Exec=dolphin-convert --format epub %F

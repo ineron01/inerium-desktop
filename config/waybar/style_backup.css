@@ -1,0 +1,308 @@
+/* ============================================================================
+ * [РЕЗЕРВНАЯ СЕССИЯ / BACKUP SESSION] — СТИЛИ ПАНЕЛИ WAYBAR
+ * Автономная копия стилей оформления в палитре Kanagawa Dragon для резервной сессии.
+ * ============================================================================ */
+
+/* Waybar — Kanagawa Dragon, «островки» на прозрачной панели */
+
+@define-color bg        rgba(24, 22, 22, 0.94);
+@define-color surface   #282727;
+@define-color hover     rgba(197, 201, 197, 0.08);
+@define-color line      rgba(197, 201, 197, 0.09);
+@define-color fg        #c5c9c5;
+@define-color fg-bright #e6e2cc;
+@define-color muted     #737c73;
+@define-color subtle    #a6a69c;
+@define-color green     #87a987;
+@define-color blue      #8ba4b0;
+@define-color aqua      #8ea4a2;
+@define-color yellow    #c4b28a;
+@define-color orange    #b6927b;
+@define-color red       #c4746e;
+@define-color violet    #8992a7;
+
+* {
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Сама панель прозрачная: видны только островки, клики по пустоте ловят распорки */
+window#waybar {
+    background: transparent;
+    color: @fg;
+}
+
+/* ── Островки ─────────────────────────────────────────── */
+
+#custom-launcher,
+#workspaces,
+#custom-hw,
+#mpris,
+#clock,
+#custom-clock,
+#tray,
+#status,
+#session {
+    background: @bg;
+    border: 1px solid @line;
+    border-radius: 10px;
+    margin: 2px 3px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+
+/* ── Лаунчер и питание: квадратные кнопки ─────────────── */
+
+#custom-launcher {
+    margin-left: 0;
+    padding: 0 11px;
+    font-size: 15px;
+    color: @green;
+}
+
+#custom-launcher:hover {
+    background: alpha(@green, 0.18);
+    border-color: alpha(@green, 0.45);
+    color: @fg-bright;
+}
+
+#session {
+    margin-right: 0;
+    padding: 0 3px;
+}
+
+#custom-control,
+#custom-power {
+    padding: 0 9px;
+    margin: 4px 0;
+    border-radius: 7px;
+    font-size: 13px;
+    transition: background 200ms ease, color 200ms ease;
+}
+
+#custom-control { color: @blue; }
+#custom-control:hover {
+    background: alpha(@blue, 0.18);
+    color: @fg-bright;
+}
+
+#custom-power { color: @red; }
+#custom-power:hover {
+    background: alpha(@red, 0.20);
+    color: @fg-bright;
+}
+
+/* ── Воркспейсы: активный — вытянутая «таблетка» ──────── */
+
+#workspaces {
+    padding: 0 3px;
+}
+
+#workspaces button {
+    min-width: 22px;
+    padding: 0 6px;
+    margin: 4px 1px;
+    border-radius: 7px;
+    color: @muted;
+    background: transparent;
+    transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#workspaces button.empty {
+    color: alpha(@muted, 0.55);
+}
+
+#workspaces button:hover {
+    background: @hover;
+    color: @fg-bright;
+    box-shadow: none;
+}
+
+#workspaces button.active {
+    min-width: 34px;
+    background: alpha(@green, 0.24);
+    color: @fg-bright;
+}
+
+#workspaces button.urgent {
+    background: alpha(@red, 0.28);
+    color: @red;
+}
+
+/* ── Железо: температура, по клику + CPU и ОЗУ ───────── */
+
+#custom-hw {
+    padding: 0 11px;
+    color: @subtle;
+}
+
+#custom-hw:hover {
+    background: @hover;
+    color: @fg-bright;
+}
+
+#custom-hw.detailed {
+    color: @fg;
+}
+
+#custom-hw.warning { color: @yellow; }
+#custom-hw.critical { color: @red; }
+
+/* ── Медиа ────────────────────────────────────────────── */
+
+#mpris {
+    padding: 0 12px;
+    color: @blue;
+}
+
+#mpris:hover {
+    background: alpha(@blue, 0.14);
+    border-color: alpha(@blue, 0.38);
+    color: @fg-bright;
+}
+
+#mpris.paused {
+    color: @muted;
+}
+
+/* Нет плеера — островок полностью исчезает */
+#mpris.stopped,
+#mpris.empty {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* ── Часы ─────────────────────────────────────────────── */
+
+#clock,
+#custom-clock {
+    padding: 0 16px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: @fg-bright;
+}
+
+#clock:hover,
+#custom-clock:hover {
+    background: alpha(@yellow, 0.12);
+    border-color: alpha(@yellow, 0.35);
+}
+
+/* ── Трей ─────────────────────────────────────────────── */
+
+#tray {
+    padding: 0 9px;
+}
+
+#tray > .passive { -gtk-icon-effect: dim; }
+#tray > .needs-attention { -gtk-icon-effect: highlight; }
+
+/* ── Индикаторы состояния: один островок ──────────────── */
+
+#status {
+    padding: 0 3px;
+}
+
+#custom-keyboard,
+#language,
+#pulseaudio,
+#custom-network,
+#network,
+#custom-hotspot,
+#custom-bluetooth,
+#bluetooth,
+#custom-battery,
+#battery {
+    padding: 0 8px;
+    margin: 4px 0;
+    border-radius: 7px;
+    color: @fg;
+    transition: background 200ms ease, color 200ms ease;
+}
+
+#custom-keyboard:hover,
+#language:hover,
+#pulseaudio:hover,
+#custom-network:hover,
+#network:hover,
+#custom-hotspot:hover,
+#custom-bluetooth:hover,
+#bluetooth:hover,
+#custom-battery:hover,
+#battery:hover {
+    background: @hover;
+    color: @fg-bright;
+}
+
+#custom-keyboard,
+#language {
+    color: @subtle;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+#pulseaudio.muted { color: @muted; }
+
+#custom-network.disconnected,
+#network.disconnected,
+#network.disabled { color: @muted; }
+
+#custom-hotspot { color: @muted; font-size: 13px; }
+#custom-hotspot.active { color: @green; }
+#custom-hotspot.starting,
+#custom-hotspot.stopping {
+    color: @yellow;
+    animation: pulse 0.8s ease-in-out infinite alternate;
+}
+
+#custom-bluetooth.off,
+#bluetooth.off,
+#bluetooth.disabled { color: @muted; }
+#custom-bluetooth.connected,
+#bluetooth.connected { color: @blue; }
+
+#custom-battery.charging,
+#custom-battery.plugged,
+#battery.charging,
+#battery.plugged { color: @green; }
+#custom-battery.warning:not(.charging),
+#battery.warning:not(.charging) { color: @yellow; }
+#custom-battery.critical:not(.charging),
+#battery.critical:not(.charging) {
+    color: @red;
+    animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+    from { opacity: 0.45; }
+    to   { opacity: 1; }
+}
+
+/* ── Распорки: невидимые зоны клика ───────────────────── */
+
+#custom-spacer_left,
+#custom-spacer_right {
+    background: transparent;
+    min-width: 1px;
+}
+
+/* ── Подсказки и календарь ────────────────────────────── */
+
+tooltip {
+    background: rgba(24, 22, 22, 0.97);
+    border: 1px solid alpha(@fg, 0.16);
+    border-radius: 12px;
+}
+
+tooltip label {
+    color: @fg;
+    padding: 6px 8px;
+    font-weight: 500;
+}

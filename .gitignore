@@ -1,0 +1,19 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+
+# Local/generated machine state
+config/hypr/hyprpaper.conf
+config/hypr/profile
+config/hypr/config/monitors_local.lua
+config/hypr/config/workspaces_local.lua
+config/swayosd/config.toml
+config/qt5ct/qt5ct.conf
+config/qt6ct/qt6ct.conf
+config/fish/fish_variables
+
+# Large binary models & caches
+*.onnx
+*.tar.gz
+*.bak*
+.cache/

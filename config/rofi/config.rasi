@@ -1,0 +1,26 @@
+configuration {
+    modes: "drun";
+    show-icons: true;
+    terminal: "kitty";
+    drun-display-format: "{name}";
+    /* Только имя, тип и ключевые слова: описания и команды давали ложные совпадения */
+    drun-match-fields: "name,generic,keywords";
+    /* Без сортировки по похожести: совпавшие приложения идут в порядке частоты запуска */
+    sort: false;
+    normalize-match: true;
+    disable-history: false;
+    hover-select: true;
+    me-select-entry: "";
+    me-accept-entry: "MousePrimary";
+    display-drun: "󰍉";
+    run-command: "uwsm app -- {cmd}";
+    run-shell-command: "uwsm app -- {terminal} -e {cmd}";
+}
+
+@theme "~/.config/rofi/kanagawa.rasi"
+
+/* Лаунчер */
+entry { placeholder: "Поиск приложений…"; }
+listview { lines: 7; }
+element-icon { size: 30px; }
+element-text { font: "JetBrainsMono Nerd Font Bold 10.5"; }

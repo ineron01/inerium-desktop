@@ -1,0 +1,50 @@
+/* SwayOSD - Kanagawa Dragon Theme */
+
+window#osd {
+    border-radius: 16px;
+    border: 1px solid rgba(197, 201, 197, 0.10);
+    background: rgba(24, 22, 22, 0.97);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+}
+
+window#osd #container {
+    margin: 14px 20px;
+}
+
+window#osd image,
+window#osd label {
+    color: #c5c9c5;
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-weight: 600;
+}
+
+/* Выключенное состояние (Caps/Num Lock off, mute) — нейтральный серый без красного */
+window#osd image:disabled,
+window#osd label:disabled {
+    color: #727169;
+}
+
+window#osd progressbar {
+    min-height: 8px;
+    border-radius: 999px;
+    background: transparent;
+    border: none;
+}
+
+window#osd trough {
+    min-height: inherit;
+    border-radius: inherit;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+window#osd progress {
+    min-height: inherit;
+    border-radius: inherit;
+    border: none;
+    background: #87a987;
+}
+
+window#osd progressbar:disabled progress {
+    background: #727169;
+}

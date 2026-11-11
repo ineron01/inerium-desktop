@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Каталог для хранения снимков экрана (сохраняется в кэше)
+CACHE_DIR="${HOME}/.cache/screenshots"
+mkdir -p "$CACHE_DIR"
+
+DATETIME=$(date +'%Y-%m-%d_%H-%M-%S')
+HUMAN_DATE=$(date +'%Y-%m-%d %H:%M:%S')
+FILENAME="screenshot_${DATETIME}.png"
+FILEPATH="${CACHE_DIR}/${FILENAME}"
+
+MODE="${1:-area}"
+
+case "$MODE" in
+    area)
+        GEOM=$(slurp 2>/dev/null) || exit 0
+        grim -g "$GEOM" "$FILEPATH"
+        ;;
+    fullscreen)
+        grim "$FILEPATH"
+        ;;
+    *)
+        GEOM=$(slurp 2>/dev/null) || exit 0
+        grim -g "$GEOM" "$FILEPATH"
+        ;;
+esac
+
+# Копируем изображение в буфер обмена
+wl-copy --type image/png < "$FILEPATH"
+
+# Регистрируем метаданные скриншота (дата, время, имя) для красивого отображения в буфере
+python3 -c "
+import json, os, hashlib
+cache_dir = os.path.expanduser('~/.cache/cliphist')
+os.makedirs(cache_dir, exist_ok=True)
+meta_file = os.path.join(cache_dir, 'image-meta.json')
+try:
+    with open('$FILEPATH', 'rb') as f:
+        img_bytes = f.read()
+    h = hashlib.sha256(img_bytes).hexdigest()
+    data = {}
+    if os.path.exists(meta_file):
+        try:
+            with open(meta_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            pass
+    data[h] = {
+        'filename': '$FILENAME',
+        'datetime': '$HUMAN_DATE',
+        'path': '$FILEPATH',
+        'type': 'screenshot'
+    }
+    # Ограничиваем историю метаданных 100 записями
+    if len(data) > 100:
+        data = dict(list(data.items())[-100:])
+    with open(meta_file, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+except Exception:
+    pass
+" 2>/dev/null || true
+
+# Отправляем уведомление. По клику ЛКМ (default) или на кнопку открываем редактор
+ACTION=$(notify-send -a "Скриншот" \
+    -i "$FILEPATH" \
+    -t 6000 \
+    --action="default=✏️ Открыть в редакторе" \
+    --action="edit=✏️ Открыть в редакторе" \
+    "Снимок экрана скопирован в буфер" \
+    "${FILENAME}" 2>/dev/null || true)
+
+if [[ "$ACTION" == "default" || "$ACTION" == "edit" ]]; then
+    if command -v satty &>/dev/null; then
+        satty --filename "$FILEPATH" \
+              --output-filename "${HOME}/Pictures/Screenshots/screenshot_%Y-%m-%d_%H-%M-%S.png" \
+              --early-exit copy &
+    elif command -v swappy &>/dev/null; then
+        swappy -f "$FILEPATH" -o "${HOME}/Pictures/Screenshots/${FILENAME}" &
+    fi
+fi

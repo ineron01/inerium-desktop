@@ -1,0 +1,53 @@
+/**
+ * Kanagawa Dragon — Askpass Theme (SUDO / SSH / подтверждение действий)
+ **/
+
+@theme "~/.config/rofi/kanagawa.rasi"
+
+window {
+    width: 440px;
+    border: 1px;
+    border-color: rgba(197, 201, 197, 0.12);
+    border-radius: 16px;
+    padding: 16px;
+    background-color: rgba(24, 22, 22, 0.97);
+}
+
+mainbox {
+    children: [ message, inputbar ];
+    spacing: 12px;
+}
+
+message {
+    padding: 4px 8px;
+    border: none;
+    background-color: transparent;
+}
+
+textbox {
+    text-color: #c5c9c5;
+    font: "JetBrainsMono Nerd Font 10.5";
+    horizontal-align: 0.5;
+}
+
+inputbar {
+    children: [ prompt, entry ];
+    padding: 10px 14px;
+    border-radius: 10px;
+    background-color: #221f1f;
+    border: 1px;
+    border-color: rgba(197, 201, 197, 0.10);
+}
+
+prompt {
+    text-color: #87a987;
+    margin: 0 8px 0 0;
+    vertical-align: 0.5;
+}
+
+entry {
+    text-color: #e6e2cc;
+    placeholder-color: #737c73;
+    vertical-align: 0.5;
+    cursor: text;
+}

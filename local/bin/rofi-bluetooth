@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+import subprocess
+import sys
+import os
+import re
+
+ROFI_THEME = os.path.expanduser("~/.config/rofi/applet.rasi")
+
+def run_cmd(cmd):
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        return res.stdout.strip()
+    except subprocess.CalledProcessError:
+        return ""
+
+def notify(title, msg, icon="bluetooth"):
+    subprocess.run(["notify-send", "-a", "Bluetooth", "-i", icon, title, msg])
+
+def rofi(options, prompt="Bluetooth"):
+    cmd = ["rofi", "-dmenu", "-p", prompt, "-theme", ROFI_THEME]
+    proc = subprocess.run(cmd, input="\n".join(options), stdout=subprocess.PIPE, text=True)
+    return proc.stdout.strip()
+
+def get_device_info(mac):
+    raw = run_cmd(["bluetoothctl", "info", mac])
+    connected = "Connected: yes" in raw
+    name_match = re.search(r"Name:\s+(.+)", raw)
+    name = name_match.group(1).strip() if name_match else mac
+    battery_match = re.search(r"Battery Percentage:\s+.*\((\d+)\)", raw)
+    battery = f"({battery_match.group(1)}%)" if battery_match else ""
+    return name, connected, battery
+
+def main():
+    show_raw = run_cmd(["bluetoothctl", "show"])
+    powered = "Powered: yes" in show_raw
+
+    if not powered:
+        chosen = rofi(["󰂯  Включить Bluetooth"], prompt="Bluetooth (выкл)")
+        if "Включить" in chosen:
+            subprocess.run(["bluetoothctl", "power", "on"])
+            notify("Bluetooth", "Bluetooth включен")
+        return
+
+    # Получаем устройства
+    devices_raw = run_cmd(["bluetoothctl", "devices"]).splitlines()
+    devices = []
+    for line in devices_raw:
+        parts = line.split(maxsplit=2)
+        if len(parts) >= 2 and parts[0] == "Device":
+            mac = parts[1]
+            name, connected, battery = get_device_info(mac)
+            devices.append({
+                "mac": mac,
+                "name": name,
+                "connected": connected,
+                "battery": battery
+            })
+
+    # Сортируем: сначала подключенные
+    devices.sort(key=lambda d: not d["connected"])
+
+    options = []
+    options.append("󰑐  Поиск новых устройств")
+    options.append("󰂲  Выключить Bluetooth")
+
+    dev_map = {}
+    for d in devices:
+        bat_str = f" {d['battery']}" if d['battery'] else ""
+        if d['connected']:
+            label = f"  󰂱  {d['name']}{bat_str} [Подключено]"
+        else:
+            label = f"   󰂯  {d['name']}"
+        options.append(label)
+        dev_map[label] = d
+
+    chosen = rofi(options, prompt="Bluetooth")
+    if not chosen:
+        return
+
+    if "Выключить Bluetooth" in chosen:
+        subprocess.run(["bluetoothctl", "power", "off"])
+        notify("Bluetooth", "Bluetooth выключен")
+    elif "Поиск новых устройств" in chosen:
+        notify("Bluetooth", "Сканирование запущено на 10 сек...", icon="dialog-information")
+        subprocess.run(["bluetoothctl", "--timeout", "10", "scan", "on"], capture_output=True)
+        # Открываем снова
+        os.execv(sys.argv[0], sys.argv)
+    elif chosen in dev_map:
+        d = dev_map[chosen]
+        mac = d['mac']
+        name = d['name']
+
+        if d['connected']:
+            sub_options = [
+                f"󰅖  Отключить {name}",
+                f"󰒲  Удалить устройство (Unpair)",
+                "󰌍  Назад"
+            ]
+            sub_chosen = rofi(sub_options, prompt=name)
+            if "Отключить" in sub_chosen:
+                notify("Bluetooth", f"Отключение от {name}...")
+                subprocess.run(["bluetoothctl", "disconnect", mac])
+                notify("Bluetooth", f"Отключено от {name}")
+            elif "Удалить" in sub_chosen:
+                subprocess.run(["bluetoothctl", "remove", mac])
+                notify("Bluetooth", f"Устройство {name} удалено")
+        else:
+            sub_options = [
+                f"󰂱  Подключить {name}",
+                f"󰒲  Удалить устройство (Unpair)",
+                "󰌍  Назад"
+            ]
+            sub_chosen = rofi(sub_options, prompt=name)
+            if "Подключить" in sub_chosen:
+                notify("Bluetooth", f"Подключение к {name}...")
+                res = subprocess.run(["bluetoothctl", "connect", mac], capture_output=True, text=True)
+                if "Connection successful" in res.stdout or res.returncode == 0:
+                    notify("Bluetooth", f"Подключено к {name}")
+                else:
+                    notify("Ошибка", f"Не удалось подключиться: {res.stdout.strip() or res.stderr.strip()}", icon="dialog-error")
+            elif "Удалить" in sub_chosen:
+                subprocess.run(["bluetoothctl", "remove", mac])
+                notify("Bluetooth", f"Устройство {name} удалено")
+
+if __name__ == "__main__":
+    main()

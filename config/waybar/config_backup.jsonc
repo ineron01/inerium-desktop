@@ -1,0 +1,228 @@
+// ============================================================================
+// [РЕЗЕРВНАЯ СЕССИЯ / BACKUP SESSION] — КОНФИГУРАЦИЯ ПАНЕЛИ WAYBAR
+// Автономная копия конфигурации панели Waybar для резервной сессии.
+// Использует Rust-провайдеры kanagawa-tools, резервный лаунчер, буфер и попапы.
+// ============================================================================
+{
+    "layer": "top",
+    "position": "top",
+    "height": 32,
+    "margin-top": 4,
+    "margin-left": 8,
+    "margin-right": 8,
+    "spacing": 0,
+    "fixed-center": true,
+    "expand-left": true,
+    "expand-right": true,
+    "reload_style_on_change": true,
+
+    "modules-left": [
+        "custom/launcher",
+        "hyprland/workspaces",
+        "custom/hw",
+        "mpris",
+        "custom/spacer_left"
+    ],
+    "modules-center": [
+        "custom/clock"
+    ],
+    "modules-right": [
+        "custom/spacer_right",
+        "tray",
+        "group/status",
+        "group/session"
+    ],
+
+    /* ───────────── ЛЕВО ───────────── */
+
+    "custom/launcher": {
+        "format": "󰣇",
+        "tooltip-format": "ЛКМ: Приложения (Резерв)\nПКМ: Буфер обмена (Резерв)",
+        "on-click": "rofi -config $HOME/.config/rofi/config_backup.rasi -show drun",
+        "on-click-right": "$HOME/.local/bin/kanagawa-clipboard --backup"
+    },
+
+    "hyprland/workspaces": {
+        "format": "{icon}",
+        "format-icons": {
+            "1": "1", "2": "2", "3": "3",
+            "4": "4", "5": "5", "6": "6",
+            "7": "7", "8": "8", "9": "9",
+            "gaming": "󰊴"
+        },
+        "all-outputs": false,
+        "sort-by-number": true,
+        "on-scroll-up": "hyprctl dispatch workspace m+1",
+        "on-scroll-down": "hyprctl dispatch workspace m-1",
+        "persistent-workspaces": {
+            "eDP-1": [1, 2, 3],
+            "eDP-2": [1, 2, 3],
+            "HDMI-A-1": [4, 5, 6]
+        }
+    },
+
+    // Железо (Rust kanagawa-hwmon): температура, переключение CPU/ОЗУ по клику
+    "custom/hw": {
+        "exec": "$HOME/.local/bin/kanagawa-hwmon",
+        "return-type": "json",
+        "on-click": "$HOME/.local/bin/kanagawa-hwmon --toggle",
+        "on-click-right": "kitty -e btop"
+    },
+
+    // Медиаплеер MPRIS
+    "mpris": {
+        "format": "{player_icon} {title}",
+        "format-paused": "{status_icon} <i>{title}</i>",
+        "format-stopped": "",
+        "player-icons": {
+            "default": "󰎆",
+            "spotify": "󰓇",
+            "firefox": "󰈹",
+            "chromium": "󰊯",
+            "chrome": "󰊯",
+            "mpv": "󰐹"
+        },
+        "status-icons": { "paused": "󰏤" },
+        "title-len": 32,
+        "dynamic-len": 40,
+        "tooltip-format": "{title}\n{artist}\n\nЛКМ: Карточка трека · ПКМ: Пауза\nКолесо: След./пред. трек",
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup media",
+        "on-click-right": "playerctl play-pause",
+        "on-scroll-up": "playerctl next",
+        "on-scroll-down": "playerctl previous"
+    },
+
+    "custom/spacer_left": {
+        "format": " ",
+        "expand": true,
+        "tooltip": false,
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup control",
+        "on-click-right": "$HOME/.local/bin/kanagawa-popup-backup control"
+    },
+
+    /* ───────────── ЦЕНТР ───────────── */
+
+    // Часы и календарь (Rust kanagawa-clock): формат HH:MM <-> Day, DD Mon HH:MM, интерактивный календарь
+    "custom/clock": {
+        "exec": "$HOME/.local/bin/kanagawa-clock --waybar",
+        "return-type": "json",
+        "on-click": "$HOME/.local/bin/kanagawa-clock --toggle",
+        "on-click-right": "$HOME/.local/bin/kanagawa-clock --reset-month",
+        "on-scroll-up": "$HOME/.local/bin/kanagawa-clock --next-month",
+        "on-scroll-down": "$HOME/.local/bin/kanagawa-clock --prev-month",
+        "tooltip": true
+    },
+
+    /* ───────────── ПРАВО ───────────── */
+
+    "custom/spacer_right": {
+        "format": " ",
+        "expand": true,
+        "tooltip": false,
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup control",
+        "on-click-right": "$HOME/.local/bin/kanagawa-popup-backup control"
+    },
+
+    "tray": {
+        "icon-size": 15,
+        "spacing": 8,
+        "show-passive-items": false
+    },
+
+    // Островок статуса: единая капсула
+    "group/status": {
+        "orientation": "horizontal",
+        "modules": [
+            "custom/keyboard",
+            "pulseaudio",
+            "custom/network",
+            "custom/hotspot",
+            "custom/bluetooth",
+            "custom/battery"
+        ]
+    },
+
+    // Раскладка клавиатуры (Rust kanagawa-layout)
+    "custom/keyboard": {
+        "exec": "$HOME/.local/bin/kanagawa-layout --waybar",
+        "return-type": "json",
+        "on-click": "$HOME/.local/bin/kanagawa-layout --switch",
+        "tooltip": true
+    },
+
+    // Звук (PipeWire/PulseAudio)
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": "󰝟 {volume}%",
+        "format-bluetooth": "󰂰 {volume}%",
+        "format-icons": {
+            "headphone": "󰋋",
+            "headset": "󰋎",
+            "hands-free": "󰋎",
+            "default": ["󰕿", "󰖀", "󰕾"]
+        },
+        "scroll-step": 2,
+        "tooltip-format": "{desc}: {volume}%\n\nЛКМ: Звук · ПКМ: Mute · СКМ: pavucontrol",
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup audio",
+        "on-click-right": "swayosd-client --output-volume mute-toggle",
+        "on-click-middle": "pavucontrol",
+        "on-scroll-up": "swayosd-client --output-volume +2",
+        "on-scroll-down": "swayosd-client --output-volume -2"
+    },
+
+    // Сеть (Rust kanagawa-network)
+    "custom/network": {
+        "exec": "$HOME/.local/bin/kanagawa-network --waybar",
+        "return-type": "json",
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup network",
+        "on-click-right": "$HOME/.local/bin/kanagawa-toggle-network.sh",
+        "on-click-middle": "nm-connection-editor",
+        "tooltip": true
+    },
+
+    // Точка доступа Wi-Fi (Rust kanagawa-hotspot)
+    "custom/hotspot": {
+        "return-type": "json",
+        "exec": "$HOME/.local/bin/kanagawa-hotspot status",
+        "interval": 10,
+        "signal": 8,
+        "on-click": "$HOME/.local/bin/kanagawa-hotspot toggle"
+    },
+
+    // Bluetooth (Rust kanagawa-bluetooth)
+    "custom/bluetooth": {
+        "exec": "$HOME/.local/bin/kanagawa-bluetooth --waybar",
+        "return-type": "json",
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup bluetooth",
+        "on-click-right": "$HOME/.local/bin/kanagawa-toggle-bluetooth.sh",
+        "on-click-middle": "blueman-manager",
+        "tooltip": true
+    },
+
+    // Батарея (Rust kanagawa-battery)
+    "custom/battery": {
+        "exec": "$HOME/.local/bin/kanagawa-battery --waybar",
+        "return-type": "json",
+        "on-click": "$HOME/.local/bin/kanagawa-battery --toggle",
+        "tooltip": true
+    },
+
+    // Центр управления + питание
+    "group/session": {
+        "orientation": "horizontal",
+        "modules": ["custom/control", "custom/power"]
+    },
+
+    "custom/control": {
+        "format": "",
+        "tooltip-format": "Центр управления (Super+A)\nТакже: клик по пустому месту панели",
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup control",
+        "on-click-right": "$HOME/.local/bin/kanagawa-popup-backup control"
+    },
+
+    "custom/power": {
+        "format": "⏻",
+        "tooltip-format": "Меню питания (Super+Alt+C)",
+        "on-click": "$HOME/.local/bin/kanagawa-popup-backup power"
+    }
+}
