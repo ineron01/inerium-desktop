@@ -6,7 +6,7 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use kanagawa_tools::format::escape_json;
 use kanagawa_tools::ipc::SelfPipe;
@@ -17,7 +17,17 @@ enum BtState {
     Connected(String),
 }
 
+fn has_bluetooth() -> bool {
+    fs::read_dir("/sys/class/bluetooth")
+        .map(|mut rd| rd.next().is_some())
+        .unwrap_or(false)
+}
+
 fn get_bt_state() -> BtState {
+    if !has_bluetooth() {
+        return BtState::PoweredOff;
+    }
+
     // Check rfkill
     let mut rfkill_on = true;
     if let Ok(entries) = fs::read_dir("/sys/class/rfkill") {
@@ -40,7 +50,8 @@ fn get_bt_state() -> BtState {
 
     // Check if controller is powered
     let is_powered = Command::new("bluetoothctl")
-        .arg("show")
+        .args(["--timeout", "2", "show"])
+        .stdin(Stdio::null())
         .output()
         .map(|out| String::from_utf8_lossy(&out.stdout).contains("Powered: yes"))
         .unwrap_or(false);
@@ -50,7 +61,11 @@ fn get_bt_state() -> BtState {
     }
 
     // Check connected devices
-    if let Ok(output) = Command::new("bluetoothctl").args(["devices", "Connected"]).output() {
+    if let Ok(output) = Command::new("bluetoothctl")
+        .args(["--timeout", "2", "devices", "Connected"])
+        .stdin(Stdio::null())
+        .output()
+    {
         let text = String::from_utf8_lossy(&output.stdout);
         let first_line = text.lines().next().unwrap_or("").trim();
         if !first_line.is_empty() {
