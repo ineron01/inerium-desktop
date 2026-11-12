@@ -10,8 +10,16 @@ SKIP_PKGS=0
 SKIP_BUILD=0
 FETCH_MODEL=0
 WITH_GREETER=0
+NON_INTERACTIVE="${INERIUM_NON_INTERACTIVE:-0}"
+INSTALL_MODE="bin"
+MODE_EXPLICIT=0
 WORKSPACES_PER_MON=""
 BACKUP_STAMP="$(date +%Y%m%d%H%M%S)"
+LOG_FILE="/tmp/inerium-install.log"
+
+RELEASE_BASE_URL="${INERIUM_RELEASE_URL:-https://github.com/ineron01/inerium-desktop/releases/latest/download}"
+BIN_ARCHIVE="inerium-binaries-linux-x86_64.tar.gz"
+BIN_SHA="inerium-binaries-linux-x86_64.tar.gz.sha256"
 
 SILUETA_URL="https://github.com/danielgatis/rembg/releases/download/v0.0.0/silueta.onnx"
 SILUETA_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/dolphin-converter/models/silueta.onnx"
@@ -21,34 +29,66 @@ usage() {
 Usage: $(basename "$0") [OPTIONS]
 
 Options:
-  --dry-run       Print planned actions without modifying the system
-  --skip-pkgs     Skip paru package installation
-  --skip-build    Skip Cargo workspace and inerium-polkit compilation
-  --fetch-model   Download silueta.onnx (~43 MB) if missing
-  --with-greeter  Install and configure greetd + inerium-greeter (/etc/greetd/)
-  --workspaces N  Workspaces per monitor (1-9, default: 3)
-  -h, --help      Show this help
+  --bin              Install prebuilt binaries from GitHub Releases (default)
+  --from-source      Compile Rust workspace and inerium-polkit locally via Cargo
+  --dry-run          Print planned actions without modifying the system
+  --skip-pkgs        Skip paru package installation
+  --skip-build       Skip binary download and Cargo compilation
+  --fetch-model      Download silueta.onnx (~43 MB) if missing
+  --with-greeter     Install and configure greetd + inerium-greeter (/etc/greetd/)
+  --workspaces N     Workspaces per monitor (1-9, default: 3)
+  --non-interactive  Run without interactive TUI prompts (also -y)
+  -h, --help         Show this help
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --dry-run)      DRY_RUN=1; shift ;;
-        --skip-pkgs)    SKIP_PKGS=1; shift ;;
-        --skip-build)   SKIP_BUILD=1; shift ;;
-        --fetch-model)  FETCH_MODEL=1; shift ;;
-        --with-greeter) WITH_GREETER=1; shift ;;
-        --workspaces)   WORKSPACES_PER_MON="${2:-}"; shift 2 ;;
-        -h|--help)      usage; exit 0 ;;
-        *)              echo "Unknown option: $1" >&2; usage; exit 1 ;;
+        --bin)
+            if [[ "$MODE_EXPLICIT" -eq 1 && "$INSTALL_MODE" == "source" ]]; then
+                echo "Cannot combine --bin and --from-source." >&2; exit 1
+            fi
+            INSTALL_MODE="bin"; MODE_EXPLICIT=1; shift ;;
+        --from-source)
+            if [[ "$MODE_EXPLICIT" -eq 1 && "$INSTALL_MODE" == "bin" ]]; then
+                echo "Cannot combine --bin and --from-source." >&2; exit 1
+            fi
+            INSTALL_MODE="source"; MODE_EXPLICIT=1; shift ;;
+        --dry-run)         DRY_RUN=1; NON_INTERACTIVE=1; shift ;;
+        --skip-pkgs)       SKIP_PKGS=1; shift ;;
+        --skip-build)      SKIP_BUILD=1; shift ;;
+        --fetch-model)     FETCH_MODEL=1; shift ;;
+        --with-greeter)    WITH_GREETER=1; shift ;;
+        --workspaces)      WORKSPACES_PER_MON="${2:-}"; shift 2 ;;
+        --non-interactive|-y) NON_INTERACTIVE=1; shift ;;
+        -h|--help)         usage; exit 0 ;;
+        *)                 echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
 done
 
-log() { printf '[inerium-desktop] %s\n' "$*"; }
+if [[ -n "$WORKSPACES_PER_MON" && ! "$WORKSPACES_PER_MON" =~ ^[1-9]$ ]]; then
+    echo "Invalid --workspaces value '$WORKSPACES_PER_MON' (expected 1-9)." >&2
+    exit 1
+fi
+
+log()  { printf '[inerium-desktop] %s\n' "$*"; }
+warn() { printf '[inerium-desktop] WARNING: %s\n' "$*" >&2; }
+
+has_gum() {
+    command -v gum >/dev/null 2>&1 && [[ -t 0 && -t 1 ]]
+}
+
+use_tui() {
+    [[ "$DRY_RUN" -eq 0 && "$NON_INTERACTIVE" -eq 0 ]] && has_gum
+}
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "Run install.sh as your regular user (not root/sudo); it calls sudo itself." >&2
     exit 1
+fi
+
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    : > "$LOG_FILE"
 fi
 
 # Ask for the sudo password once and keep the timestamp fresh, so long AUR/Cargo builds
@@ -70,6 +110,179 @@ run() {
     fi
 }
 
+run_step() {
+    local title="$1"
+    shift
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] %s: %s\n' "$title" "$*"
+        return 0
+    fi
+    if use_tui; then
+        printf '\n=== %s (%s) ===\n' "$title" "$(date '+%H:%M:%S')" >> "$LOG_FILE"
+        if ! gum spin --spinner dot --title "$title" -- bash -c '"$@" >> "$0" 2>&1' "$LOG_FILE" "$@"; then
+            printf '\n[inerium-desktop] ERROR during: %s\n' "$title" >&2
+            printf '[inerium-desktop] Last 25 lines of %s:\n' "$LOG_FILE" >&2
+            tail -n 25 "$LOG_FILE" >&2 || true
+            return 1
+        fi
+    else
+        log "$title"
+        "$@"
+    fi
+}
+
+# ============================================================================
+# Hardware, Display Manager & Session Detection
+# ============================================================================
+detect_gpu_label() {
+    local has_nv=0 has_amd=0 has_intel=0 v vf
+    for vf in /sys/class/drm/card*/device/vendor; do
+        [[ -r "$vf" ]] || continue
+        v="$(cat "$vf" 2>/dev/null || true)"
+        case "$v" in
+            0x10de) has_nv=1 ;;
+            0x1002) has_amd=1 ;;
+            0x8086) has_intel=1 ;;
+        esac
+    done
+    if [[ "$has_amd" -eq 1 && "$has_nv" -eq 1 ]]; then
+        echo "Hybrid (AMD + NVIDIA)"
+    elif [[ "$has_intel" -eq 1 && "$has_nv" -eq 1 ]]; then
+        echo "Hybrid (Intel + NVIDIA)"
+    elif [[ "$has_nv" -eq 1 ]]; then
+        echo "NVIDIA"
+    elif [[ "$has_amd" -eq 1 ]]; then
+        echo "AMD"
+    elif [[ "$has_intel" -eq 1 ]]; then
+        echo "Intel"
+    else
+        echo "Unknown"
+    fi
+}
+
+detect_chassis_label() {
+    if compgen -G "/sys/class/power_supply/BAT*" >/dev/null 2>&1; then
+        echo "Laptop (battery detected)"
+    else
+        echo "Desktop"
+    fi
+}
+
+detect_current_dm() {
+    local dm
+    for dm in sddm gdm lightdm greetd; do
+        if systemctl is-enabled "${dm}.service" >/dev/null 2>&1 || systemctl is-active "${dm}.service" >/dev/null 2>&1; then
+            echo "$dm"
+            return 0
+        fi
+    done
+    echo "none"
+}
+
+detect_current_session() {
+    local de="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}"
+    if [[ -n "$de" ]]; then
+        if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+            echo "$de (Wayland)"
+        elif [[ -n "${DISPLAY:-}" ]]; then
+            echo "$de (X11)"
+        else
+            echo "$de"
+        fi
+    elif [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+        echo "Wayland"
+    elif [[ -n "${DISPLAY:-}" ]]; then
+        echo "X11"
+    else
+        echo "TTY"
+    fi
+}
+
+# Ensure gum is available for interactive TUI if possible
+if [[ "$DRY_RUN" -eq 0 && "$NON_INTERACTIVE" -eq 0 && -t 0 && -t 1 ]] && ! command -v gum >/dev/null 2>&1; then
+    if [[ "$SKIP_PKGS" -eq 0 ]]; then
+        sudo pacman -S --needed --noconfirm gum >> "$LOG_FILE" 2>&1 || true
+    fi
+fi
+
+# Interactive TUI prompt phase
+run_tui_prompts() {
+    local gpu_info chassis_info dm_info sess_info
+    gpu_info="$(detect_gpu_label)"
+    chassis_info="$(detect_chassis_label)"
+    dm_info="$(detect_current_dm)"
+    sess_info="$(detect_current_session)"
+
+    gum style \
+        --border rounded \
+        --border-foreground 212 \
+        --padding "1 3" \
+        --margin "1 0" \
+        --bold \
+        "INERIUM DESKTOP" \
+        "Hyprland Lua + Rust Desktop Environment"
+
+    gum style \
+        --border normal \
+        --border-foreground 99 \
+        --padding "0 2" \
+        --margin "0 0 1 0" \
+        "Detected System:" \
+        "  GPU:             $gpu_info" \
+        "  Chassis:         $chassis_info" \
+        "  Display Manager: $dm_info" \
+        "  Session:         $sess_info"
+
+    if [[ "$SKIP_BUILD" -eq 0 ]]; then
+        local mode_fast="Fast (prebuilt binaries, ~1-2 min)"
+        local mode_src="From source (local Cargo build, ~15 min)"
+        local default_mode="$mode_fast"
+        [[ "$INSTALL_MODE" == "source" ]] && default_mode="$mode_src"
+        local chosen_mode
+        chosen_mode="$(gum choose --header "Installation mode:" --selected "$default_mode" "$mode_fast" "$mode_src")"
+        if [[ "$chosen_mode" == "$mode_src" ]]; then
+            INSTALL_MODE="source"
+        else
+            INSTALL_MODE="bin"
+        fi
+    fi
+
+    local dm_greeter="Enable inerium-greeter (greetd)"
+    local dm_keep="Keep current DM untouched"
+    local default_dm="$dm_greeter"
+    [[ "$WITH_GREETER" -eq 0 ]] && default_dm="$dm_keep"
+    local chosen_dm
+    chosen_dm="$(gum choose --header "Login screen (Display Manager):" --selected "$default_dm" "$dm_greeter" "$dm_keep")"
+    if [[ "$chosen_dm" == "$dm_greeter" ]]; then
+        WITH_GREETER=1
+    else
+        WITH_GREETER=0
+    fi
+
+    if gum confirm "Download silueta.onnx (~43 MB for Dolphin AI background removal)?" \
+        --default="$([[ "$FETCH_MODEL" -eq 1 ]] && echo true || echo false)"; then
+        FETCH_MODEL=1
+    else
+        FETCH_MODEL=0
+    fi
+
+    local ws_default="${WORKSPACES_PER_MON:-3}"
+    local ws_input
+    ws_input="$(gum input --header "Workspaces per monitor (1-9):" --value "$ws_default" --placeholder "3")"
+    if [[ "$ws_input" =~ ^[1-9]$ ]]; then
+        WORKSPACES_PER_MON="$ws_input"
+    else
+        WORKSPACES_PER_MON="3"
+    fi
+}
+
+if use_tui; then
+    run_tui_prompts
+fi
+
+# ============================================================================
+# File & Package Helpers
+# ============================================================================
 link_item() {
     local src="$1"
     local dst="$2"
@@ -143,7 +356,7 @@ install_sudoers_template() {
     if sudo visudo -cf "$tmp" >/dev/null 2>&1; then
         sudo install -m 0440 "$tmp" "$dst"
     else
-        log "WARNING: Invalid sudoers syntax in $tpl; skipped $dst"
+        warn "Invalid sudoers syntax in $tpl; skipped $dst"
     fi
     rm -f "$tmp"
 }
@@ -152,12 +365,9 @@ ensure_paru() {
     if command -v paru >/dev/null 2>&1; then
         return 0
     fi
-    log "paru not found; installing paru..."
-    run "sudo pacman -S --needed --noconfirm base-devel git"
+    sudo pacman -S --needed --noconfirm base-devel git
     if pacman -Si paru >/dev/null 2>&1; then
-        run "sudo pacman -S --needed --noconfirm paru"
-    elif [[ "$DRY_RUN" -eq 1 ]]; then
-        printf '[DRY-RUN] git clone --depth 1 https://aur.archlinux.org/paru-bin.git <tmp> && makepkg -si --noconfirm\n'
+        sudo pacman -S --needed --noconfirm paru
     else
         local tmp_dir
         tmp_dir="$(mktemp -d)"
@@ -183,12 +393,22 @@ install_pkgs() {
 }
 
 install_pkglist() {
-    local -a wanted
+    local -a wanted filtered
     mapfile -t wanted < <(grep -vE '^\s*(#|$)' "$1" | awk '{print $1}')
-    install_pkgs "${wanted[@]}"
+    if [[ "$INSTALL_MODE" == "bin" && "$SKIP_BUILD" -eq 0 ]]; then
+        local pkg
+        for pkg in "${wanted[@]}"; do
+            case "$pkg" in
+                rust|clang|mold) continue ;;
+                *) filtered+=("$pkg") ;;
+            esac
+        done
+        install_pkgs "${filtered[@]}"
+    else
+        install_pkgs "${wanted[@]}"
+    fi
 }
 
-# Resolve a user unit the way systemd would (user overrides first, then packaged units)
 user_unit_path() {
     local d
     for d in "$HOME/.config/systemd/user" /etc/systemd/user /usr/lib/systemd/user; do
@@ -200,16 +420,24 @@ user_unit_path() {
     return 1
 }
 
+export -f ensure_paru install_pkgs install_pkglist
+export DRY_RUN INSTALL_MODE SKIP_BUILD
+
+# ============================================================================
 # 1. Install base packages
+# ============================================================================
 if [[ "$SKIP_PKGS" -eq 0 ]]; then
-    # One full upgrade up front; later installs use -S only, so nothing is ever a partial upgrade
-    log "Upgrading the system (pacman -Syu)..."
-    run "sudo pacman -Syu --noconfirm"
-    ensure_paru
-    log "Installing base packages from pkglist-base.txt..."
-    install_pkglist "$REPO_DIR/pkglist-base.txt"
+    run_step "Upgrading system (pacman -Syu)..." sudo pacman -Syu --noconfirm
+    if ! command -v paru >/dev/null 2>&1; then
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            printf '[DRY-RUN] ensure_paru\n'
+        else
+            run_step "Installing AUR helper (paru)..." ensure_paru
+        fi
+    fi
+    run_step "Installing base packages from pkglist-base.txt..." install_pkglist "$REPO_DIR/pkglist-base.txt"
     if [[ ! -d /usr/share/icons/Bibata-Modern-Ice && ! -d "$HOME/.local/share/icons/Bibata-Modern-Ice" ]]; then
-        run "paru -S --needed --noconfirm bibata-cursor-theme-bin || true"
+        run_step "Installing Bibata cursor theme..." bash -c 'paru -S --needed --noconfirm bibata-cursor-theme-bin || true'
     fi
     for svc in NetworkManager.service bluetooth.service power-profiles-daemon.service; do
         if ! systemctl is-enabled --quiet "$svc" 2>/dev/null && systemctl list-unit-files "$svc" >/dev/null 2>&1; then
@@ -218,32 +446,122 @@ if [[ "$SKIP_PKGS" -eq 0 ]]; then
     done
 fi
 
-# 2. Build Rust workspace + standalone inerium-polkit
-if [[ "$SKIP_BUILD" -eq 0 ]]; then
-    if command -v rustup >/dev/null 2>&1 && ! rustc --version >/dev/null 2>&1; then
-        log "Initializing default Rust toolchain via rustup..."
-        run "rustup default stable"
-    fi
-    log "Building universal Rust workspace (inerium-tools, inerium-shell, inerium-greeter, inerium-setup, dolphin-converter)..."
-    run "cargo build --manifest-path '$REPO_DIR/Cargo.toml' --workspace --release"
+# ============================================================================
+# 2. Deliver Rust binaries (--bin with ldd smoke-test & fallback, or --from-source)
+# ============================================================================
+USER_BINS_STR="hypr-ipc-bridge inerium-battery inerium-bluetooth inerium-clipboard inerium-clock inerium-dnd inerium-hotspot inerium-hwmon inerium-layout inerium-network inerium-osd-watcher inerium-popup inerium-updates inerium-shell inerium-setup dolphin-convert"
 
-    log "Building standalone inerium-polkit..."
-    run "cargo build --manifest-path '$REPO_DIR/standalone/inerium-polkit/Cargo.toml' --release"
+install_from_binaries() {
+    local tmp_dir bin missing_libs
+    local -a user_bins
+    read -ra user_bins <<< "$USER_BINS_STR"
+    tmp_dir="$(mktemp -d)"
+
+    if ! curl -fsSL "${RELEASE_BASE_URL}/${BIN_ARCHIVE}" -o "${tmp_dir}/${BIN_ARCHIVE}"; then
+        warn "Failed to download ${RELEASE_BASE_URL}/${BIN_ARCHIVE}"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    if ! curl -fsSL "${RELEASE_BASE_URL}/${BIN_SHA}" -o "${tmp_dir}/${BIN_SHA}"; then
+        warn "Failed to download ${RELEASE_BASE_URL}/${BIN_SHA}"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+    if ! (cd "$tmp_dir" && sha256sum -c "$BIN_SHA" >/dev/null 2>&1); then
+        warn "SHA256 verification failed for ${BIN_ARCHIVE}"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    mkdir -p "${tmp_dir}/dist"
+    tar -xzf "${tmp_dir}/${BIN_ARCHIVE}" -C "${tmp_dir}/dist"
+
+    # Smoke-test shared library dependencies via ldd
+    for bin in "${user_bins[@]}" inerium-polkit inerium-greeter; do
+        if [[ ! -x "${tmp_dir}/dist/${bin}" ]]; then
+            warn "Missing binary in release archive: ${bin}"
+            rm -rf "$tmp_dir"
+            return 1
+        fi
+        missing_libs="$(ldd "${tmp_dir}/dist/${bin}" 2>/dev/null | grep "not found" || true)"
+        if [[ -n "$missing_libs" ]]; then
+            warn "Shared library mismatch in ${bin}:"
+            printf '%s\n' "$missing_libs" >&2
+            rm -rf "$tmp_dir"
+            return 1
+        fi
+    done
+
+    mkdir -p "$HOME/.local/bin"
+    for bin in "${user_bins[@]}" inerium-polkit; do
+        install -m 755 "${tmp_dir}/dist/${bin}" "$HOME/.local/bin/${bin}"
+    done
+    install_root_if_changed 755 "${tmp_dir}/dist/inerium-greeter" /usr/local/bin/inerium-greeter
+
+    rm -rf "$tmp_dir"
+    return 0
+}
+
+build_from_source() {
+    local -a user_bins
+    read -ra user_bins <<< "$USER_BINS_STR"
+    if command -v rustup >/dev/null 2>&1 && ! rustc --version >/dev/null 2>&1; then
+        run_step "Initializing default Rust toolchain..." rustup default stable
+    fi
+    run_step "Compiling universal Rust workspace (this may take 10-15 min)..." \
+        cargo build --manifest-path "$REPO_DIR/Cargo.toml" --workspace --release
+    run_step "Compiling standalone inerium-polkit..." \
+        cargo build --manifest-path "$REPO_DIR/standalone/inerium-polkit/Cargo.toml" --release
 
     log "Installing compiled binaries atomically..."
-    run "mkdir -p '$HOME/.local/bin'"
-    for bin in \
-        hypr-ipc-bridge inerium-battery inerium-bluetooth inerium-clipboard \
-        inerium-clock inerium-dnd inerium-hotspot inerium-hwmon \
-        inerium-layout inerium-network inerium-osd-watcher inerium-popup \
-        inerium-updates inerium-shell inerium-setup dolphin-convert; do
-        run "install -m 755 '$REPO_DIR/target/release/$bin' '$HOME/.local/bin/$bin'"
+    mkdir -p "$HOME/.local/bin"
+    for bin in "${user_bins[@]}"; do
+        install -m 755 "$REPO_DIR/target/release/$bin" "$HOME/.local/bin/$bin"
     done
-    run "install -m 755 '$REPO_DIR/standalone/inerium-polkit/target/release/inerium-polkit' '$HOME/.local/bin/inerium-polkit'"
+    install -m 755 "$REPO_DIR/standalone/inerium-polkit/target/release/inerium-polkit" "$HOME/.local/bin/inerium-polkit"
     install_root_if_changed 755 "$REPO_DIR/target/release/inerium-greeter" /usr/local/bin/inerium-greeter
+}
+
+export -f install_from_binaries install_root_if_changed warn log
+export RELEASE_BASE_URL BIN_ARCHIVE BIN_SHA USER_BINS_STR
+
+if [[ "$SKIP_BUILD" -eq 0 ]]; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        if [[ "$INSTALL_MODE" == "bin" ]]; then
+            printf '[DRY-RUN] Download %s/%s + %s, verify sha256, run ldd smoke-test, install to ~/.local/bin & /usr/local/bin\n' \
+                "$RELEASE_BASE_URL" "$BIN_ARCHIVE" "$BIN_SHA"
+        else
+            printf '[DRY-RUN] cargo build --manifest-path %s/Cargo.toml --workspace --release\n' "$REPO_DIR"
+            printf '[DRY-RUN] cargo build --manifest-path %s/standalone/inerium-polkit/Cargo.toml --release\n' "$REPO_DIR"
+            printf '[DRY-RUN] install 17 binaries -> ~/.local/bin/ and inerium-greeter -> /usr/local/bin/\n'
+        fi
+    elif [[ "$INSTALL_MODE" == "bin" ]]; then
+        if ! run_step "Downloading & verifying prebuilt binaries..." install_from_binaries; then
+            warn "Prebuilt binary installation failed or shared libraries did not match."
+            do_fallback=1
+            if use_tui; then
+                if ! gum confirm "Fall back to local Cargo compilation (--from-source)?" --default=true; then
+                    do_fallback=0
+                fi
+            fi
+            if [[ "$do_fallback" -eq 1 ]]; then
+                INSTALL_MODE="source"
+                if [[ "$SKIP_PKGS" -eq 0 ]]; then
+                    run_step "Installing Rust build toolchain..." install_pkgs rust base-devel pkgconf clang mold
+                fi
+                build_from_source
+            else
+                exit 1
+            fi
+        fi
+    else
+        build_from_source
+    fi
 fi
 
+# ============================================================================
 # 3. Install user scripts & system indexer
+# ============================================================================
 log "Deploying user scripts & KIO service menus..."
 run "mkdir -p '$HOME/.local/bin' '$HOME/.local/share/kio/servicemenus'"
 for script in "$REPO_DIR"/local/bin/*; do
@@ -267,7 +585,9 @@ fi
 install_root_if_changed 755 "$REPO_DIR/system/usr/local/bin/inerium-desktop-indexer" /usr/local/bin/inerium-desktop-indexer
 install_sudoers_template "$REPO_DIR/system/etc/sudoers.d/inerium-desktop-indexer.template" /etc/sudoers.d/inerium-desktop-indexer
 
+# ============================================================================
 # 4. Symlink ~/.config directories and Hyprland files
+# ============================================================================
 log "Linking desktop configurations into ~/.config..."
 for dir in alacritty environment.d gtk-3.0 gtk-4.0 kitty mako rofi uwsm waybar; do
     link_item "$REPO_DIR/config/$dir" "$HOME/.config/$dir"
@@ -537,19 +857,27 @@ link_item "$REPO_DIR/config/systemd/user/mako.service.d/slice.conf" "$HOME/.conf
 link_item "$REPO_DIR/config/systemd/user/waybar.service.d/bridge.conf" "$HOME/.config/systemd/user/waybar.service.d/bridge.conf"
 link_item "$REPO_DIR/config/systemd/user/waybar.service.d/slice.conf" "$HOME/.config/systemd/user/waybar.service.d/slice.conf"
 
+# ============================================================================
 # 5. Check / fetch ONNX background removal model (silueta.onnx)
+# ============================================================================
 if [[ -s "$SILUETA_PATH" ]]; then
     log "Found silueta.onnx at $SILUETA_PATH"
 elif [[ "$FETCH_MODEL" -eq 1 ]]; then
-    log "Downloading silueta.onnx (~43 MB)..."
-    run "mkdir -p '$(dirname "$SILUETA_PATH")'"
-    run "curl -fsSL '$SILUETA_URL' -o '$SILUETA_PATH'"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '[DRY-RUN] mkdir -p %s && curl -fsSL %s -o %s\n' "$(dirname "$SILUETA_PATH")" "$SILUETA_URL" "$SILUETA_PATH"
+    else
+        mkdir -p "$(dirname "$SILUETA_PATH")"
+        run_step "Downloading silueta.onnx (~43 MB)..." curl -fsSL "$SILUETA_URL" -o "$SILUETA_PATH"
+    fi
 else
     log "NOTE: silueta.onnx not found at $SILUETA_PATH."
     log "      Run with --fetch-model (or download from $SILUETA_URL) for Dolphin AI background removal."
 fi
 
+# ============================================================================
 # 6. Wayland session entries & optional greetd + inerium-greeter setup
+#    Note: Never stop an active DM (e.g. sddm/gdm) so KDE/GNOME sessions stay intact.
+# ============================================================================
 for sess in "$REPO_DIR"/system/usr/share/wayland-sessions/*.desktop; do
     [[ -f "$sess" ]] || continue
     install_root_if_changed 644 "$sess" "/usr/share/wayland-sessions/$(basename "$sess")"
@@ -558,8 +886,11 @@ done
 if [[ "$WITH_GREETER" -eq 1 ]]; then
     log "Configuring greetd + inerium-greeter..."
     if [[ "$SKIP_PKGS" -eq 0 ]]; then
-        ensure_paru
-        install_pkgs greetd cage
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            printf '[DRY-RUN] install_pkgs greetd cage\n'
+        else
+            run_step "Installing greetd & cage..." install_pkgs greetd cage
+        fi
     fi
     install_root_if_changed 644 "$REPO_DIR/assets/backgrounds/inerium-greeter.jpg" /usr/share/backgrounds/inerium-greeter.jpg
     if [[ -f /etc/greetd/config.toml ]] && ! cmp -s "$REPO_DIR/system/etc/greetd/config.toml" /etc/greetd/config.toml 2>/dev/null; then
@@ -578,7 +909,7 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
     fi
     for dm in sddm.service gdm.service lightdm.service; do
         if systemctl is-enabled "$dm" >/dev/null 2>&1; then
-            log "Disabling conflicting display manager: $dm"
+            log "Disabling display manager autostart (keeping current session running): $dm"
             run "sudo systemctl disable '$dm'"
         fi
     done
@@ -588,7 +919,9 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
     fi
 fi
 
+# ============================================================================
 # 7. Enable systemd user units (live D-Bus or offline TTY symlink fallback) & rebuild KDE cache
+# ============================================================================
 USER_UNITS="cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service hypridle.service inerium-desktop-indexer.path inerium-osd-watcher.service inerium-polkit.service inerium-popups.service inerium-updates.timer mako.service swayosd-server.service waybar.service"
 MASK_UNITS="hyprpolkitagent.service at-spi2-registryd.service at-spi-dbus-bus.service"
 if systemctl --user show-environment >/dev/null 2>&1; then
@@ -617,4 +950,35 @@ if command -v kbuildsycoca6 >/dev/null 2>&1; then
     run "kbuildsycoca6 --noincremental >/dev/null 2>&1 || true"
 fi
 
-log "Base inerium-desktop installation complete!"
+# ============================================================================
+# 8. Final Summary & Next Steps
+# ============================================================================
+print_summary() {
+    local msg1 msg2
+    msg1="Inerium Desktop installation complete!"
+    if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+        msg2="Your current desktop session was kept intact. Reboot (sudo reboot) or log out and select 'Hyprland (Waybar)' at the login screen."
+    else
+        msg2="Run 'sudo reboot' to start inerium-greeter and enter Hyprland."
+    fi
+
+    if use_tui; then
+        gum style \
+            --border rounded \
+            --border-foreground 82 \
+            --padding "1 2" \
+            --margin "1 0" \
+            "$msg1" \
+            "$msg2" \
+            "Install log: $LOG_FILE"
+    else
+        log "$msg1"
+        log "$msg2"
+    fi
+}
+
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    print_summary
+else
+    log "Dry-run complete."
+fi

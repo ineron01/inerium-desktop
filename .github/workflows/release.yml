@@ -1,0 +1,75 @@
+name: Build and Release Inerium Binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag name (e.g. v0.1.0)"
+        required: true
+        default: "v0.1.0-manual"
+
+permissions:
+  contents: write
+
+jobs:
+  build-arch-x86_64:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+      options: --user root
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            git rust pkgconf clang mold binutils \
+            gtk4 gtk4-layer-shell vte4 libadwaita \
+            pango cairo gdk-pixbuf2 glib2
+
+      - name: Configure git safe.directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify universal Cargo features
+        run: |
+          if grep -q '^default = \["msi-ec"\]' crates/inerium-tools/Cargo.toml; then
+            sed -i 's/^default = \["msi-ec"\]/default = []/' crates/inerium-tools/Cargo.toml
+          fi
+
+      - name: Build Rust workspace (release)
+        run: cargo build --manifest-path Cargo.toml --workspace --release
+
+      - name: Build standalone inerium-polkit (release)
+        run: cargo build --manifest-path standalone/inerium-polkit/Cargo.toml --release
+
+      - name: Package and checksum binaries
+        run: |
+          mkdir -p dist
+          for bin in \
+            hypr-ipc-bridge inerium-battery inerium-bluetooth inerium-clipboard \
+            inerium-clock inerium-dnd inerium-hotspot inerium-hwmon \
+            inerium-layout inerium-network inerium-osd-watcher inerium-popup \
+            inerium-updates inerium-shell inerium-setup dolphin-convert \
+            inerium-greeter; do
+            install -m 755 "target/release/$bin" "dist/$bin"
+          done
+          install -m 755 standalone/inerium-polkit/target/release/inerium-polkit dist/inerium-polkit
+          strip --strip-unneeded dist/* || true
+          tar -C dist -czf inerium-binaries-linux-x86_64.tar.gz .
+          sha256sum inerium-binaries-linux-x86_64.tar.gz > inerium-binaries-linux-x86_64.tar.gz.sha256
+          ls -lh inerium-binaries-linux-x86_64.tar.gz inerium-binaries-linux-x86_64.tar.gz.sha256
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          name: Inerium Desktop ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          generate_release_notes: true
+          files: |
+            inerium-binaries-linux-x86_64.tar.gz
+            inerium-binaries-linux-x86_64.tar.gz.sha256
