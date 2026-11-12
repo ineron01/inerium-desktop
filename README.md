@@ -20,6 +20,12 @@ Universal CachyOS / Arch Linux desktop environment built around **Hyprland (Lua 
 
 Works identically from a **fresh TTY** or **inside any existing desktop environment** (KDE Plasma, GNOME, etc.):
 
+**Short URL (via GitHub Pages):**
+```bash
+curl -sL ineron01.github.io/inerium-desktop | bash
+```
+
+**Direct GitHub Raw URL (Alternative / Fallback):**
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop/main/bootstrap.sh)"
 ```
