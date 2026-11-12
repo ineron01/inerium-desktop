@@ -103,7 +103,7 @@ hl.window_rule({
 })
 
 hl.window_rule({
-    match = { class = "^(com\\.ineron\\.phonewebcam|phone-webcam-gui|org\\.kanagawa\\.camera)$" },
+    match = { class = "^(phone-webcam-gui|org\\.kanagawa\\.camera)$" },
     float = true,
     center = true,
     size = { "380", "560" },
