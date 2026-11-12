@@ -71,8 +71,14 @@ fn find_battery_dir_in(base: &Path) -> Option<PathBuf> {
 }
 
 pub fn find_battery_threshold_path() -> Option<PathBuf> {
-    let p = find_battery_dir()?.join("charge_control_end_threshold");
-    if p.exists() { Some(p) } else { None }
+    let dir = find_battery_dir()?;
+    for name in &["charge_control_end_threshold", "charge_stop_threshold"] {
+        let p = dir.join(name);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
 }
 
 pub fn has_battery_threshold() -> bool {

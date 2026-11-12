@@ -40,6 +40,19 @@ fn read_sysfs_i64(path: &Path) -> i64 {
     read_sysfs_str(path).parse().unwrap_or(0)
 }
 
+fn read_battery_threshold(bat_dir: &Path) -> i64 {
+    for name in &["charge_control_end_threshold", "charge_stop_threshold"] {
+        let path = bat_dir.join(name);
+        if path.exists() {
+            let val = read_sysfs_i64(&path);
+            if (1..=100).contains(&val) {
+                return val;
+            }
+        }
+    }
+    100
+}
+
 fn discover_power_supplies() -> (Option<PathBuf>, bool) {
     discover_power_supplies_in(Path::new("/sys/class/power_supply"))
 }
@@ -83,6 +96,7 @@ struct BatteryInfo {
     ac_online: bool,
     power_w: f64,
     health_pct: f64,
+    threshold: i64,
     time_str: String,
     icon: &'static str,
 }
@@ -97,6 +111,7 @@ fn get_battery_info() -> BatteryInfo {
             ac_online: true,
             power_w: 0.0,
             health_pct: 100.0,
+            threshold: 100,
             time_str: String::new(),
             icon: ICON_PLUGGED,
         };
@@ -128,18 +143,29 @@ fn get_battery_info() -> BatteryInfo {
         100.0
     };
 
+    let threshold = read_battery_threshold(&bat_dir);
+
     let time_str = if rate > 0 {
         if st == "Discharging" || (!ac_online && now > 0) {
             let hrs = now as f64 / rate as f64;
             let h = hrs as i64;
             let m = ((hrs - h as f64) * 60.0) as i64;
             format!("{}ч {:02}м", h, m)
-        } else if st == "Charging" && full > now {
-            let rem = full - now;
-            let hrs = rem as f64 / rate as f64;
-            let h = hrs as i64;
-            let m = ((hrs - h as f64) * 60.0) as i64;
-            format!("{}ч {:02}м до 100%", h, m)
+        } else if st == "Charging" {
+            let target = if threshold < 100 {
+                ((full as f64) * (threshold as f64 / 100.0)).round() as i64
+            } else {
+                full
+            };
+            if target > now {
+                let rem = target - now;
+                let hrs = rem as f64 / rate as f64;
+                let h = hrs as i64;
+                let m = ((hrs - h as f64) * 60.0) as i64;
+                format!("{}ч {:02}м до {}%", h, m, threshold)
+            } else {
+                String::new()
+            }
         } else {
             String::new()
         }
@@ -165,6 +191,7 @@ fn get_battery_info() -> BatteryInfo {
         ac_online,
         power_w,
         health_pct,
+        threshold,
         time_str,
         icon,
     }
@@ -201,19 +228,31 @@ fn format_tooltip(info: &BatteryInfo) -> String {
         "<span color='#87a987' weight='bold'>󰁹 Батарея: {}%</span>",
         info.capacity
     ));
-    lines.push(format!("<span color='#727169'>Статус:</span>      <span color='#e6e2cc'>{}</span>", status_ru));
-    lines.push(format!("<span color='#727169'>Блок питания:</span><span color='#8ba4b0'>{}</span>", ac_str));
+    lines.push(format!("<span color='#727169'>{:<13}</span><span color='#e6e2cc'>{}</span>", "Статус:", status_ru));
+    lines.push(format!("<span color='#727169'>{:<13}</span><span color='#8ba4b0'>{}</span>", "Блок питания:", ac_str));
+
+    if info.threshold < 100 {
+        lines.push(format!("<span color='#727169'>{:<13}</span><span color='#c4b28a'>{}%</span>", "Лимит заряда:", info.threshold));
+    }
 
     if !info.time_str.is_empty() {
-        let label = if info.status == "Charging" { "До полной:" } else { "Осталось:" };
-        lines.push(format!("<span color='#727169'>{:<14}</span><span color='#c4b28a'>{}</span>", label, info.time_str));
+        let label = if info.status == "Charging" {
+            if info.threshold < 100 {
+                "До лимита:"
+            } else {
+                "До полной:"
+            }
+        } else {
+            "Осталось:"
+        };
+        lines.push(format!("<span color='#727169'>{:<13}</span><span color='#c4b28a'>{}</span>", label, info.time_str));
     }
 
     if info.power_w > 0.05 {
-        lines.push(format!("<span color='#727169'>Мощность:</span>    <span color='#e6e2cc'>{:.1} Вт</span>", info.power_w));
+        lines.push(format!("<span color='#727169'>{:<13}</span><span color='#e6e2cc'>{:.1} Вт</span>", "Мощность:", info.power_w));
     }
 
-    lines.push(format!("<span color='#727169'>Здоровье АКБ:</span><span color='#87a987'>{:.1}%</span>", info.health_pct));
+    lines.push(format!("<span color='#727169'>{:<13}</span><span color='#87a987'>{:.1}%</span>", "Здоровье АКБ:", info.health_pct));
     lines.push(String::new());
     lines.push("<span color='#727169' size='small'>ЛКМ: Переключить время / процент</span>".to_string());
     lines.push("</span>".to_string());
@@ -322,6 +361,7 @@ mod tests {
             ac_online: true,
             power_w: 0.0,
             health_pct: 100.0,
+            threshold: 100,
             time_str: String::new(),
             icon: ICON_PLUGGED,
         };
@@ -329,5 +369,57 @@ mod tests {
             format_json(&info),
             "{\"text\":\"\",\"tooltip\":\"\",\"class\":[\"none\"]}"
         );
+    }
+
+    #[test]
+    fn test_charging_time_calculation_with_threshold_80() {
+        let full = 4_000_000i64;
+        let now = 2_000_000i64;
+        let rate = 2_000_000i64;
+        let threshold = 80i64;
+        let target = ((full as f64) * (threshold as f64 / 100.0)).round() as i64;
+        assert_eq!(target, 3_200_000);
+        let rem = target - now;
+        assert_eq!(rem, 1_200_000);
+        let hrs = rem as f64 / rate as f64;
+        let h = hrs as i64;
+        let m = ((hrs - h as f64) * 60.0) as i64;
+        let time_str = format!("{}ч {:02}м до {}%", h, m, threshold);
+        assert_eq!(time_str, "0ч 36м до 80%");
+    }
+
+    #[test]
+    fn test_charging_time_calculation_full_100() {
+        let full = 4_000_000i64;
+        let now = 2_000_000i64;
+        let rate = 2_000_000i64;
+        let threshold = 100i64;
+        let target = full;
+        let rem = target - now;
+        let hrs = rem as f64 / rate as f64;
+        let h = hrs as i64;
+        let m = ((hrs - h as f64) * 60.0) as i64;
+        let time_str = format!("{}ч {:02}м до {}%", h, m, threshold);
+        assert_eq!(time_str, "1ч 00м до 100%");
+    }
+
+    #[test]
+    fn test_tooltip_includes_threshold_and_label() {
+        let info = BatteryInfo {
+            present: true,
+            capacity: 55,
+            status: "Charging".to_string(),
+            ac_online: true,
+            power_w: 25.0,
+            health_pct: 95.0,
+            threshold: 80,
+            time_str: "0ч 30м до 80%".to_string(),
+            icon: ICON_CHARGING,
+        };
+        let tip = format_tooltip(&info);
+        assert!(tip.contains("Лимит заряда:"));
+        assert!(tip.contains("80%"));
+        assert!(tip.contains("До лимита:"));
+        assert!(tip.contains("0ч 30м до 80%"));
     }
 }
