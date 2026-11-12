@@ -6,7 +6,7 @@ hyprpaper
 hyprpicker
 uwsm
 xdg-desktop-portal-hyprland
-xdg-desktop-portal-kde
+xdg-desktop-portal-gtk
 waybar
 rofi
 rofi-calc
@@ -38,9 +38,10 @@ ddcutil
 brightnessctl
 upower
 
-# Shell, Terminal, File Manager & Converter Backends
+# Shell, Terminal, File Manager, Browser & Converter Backends
 fish
 kitty
+google-chrome
 btop
 fastfetch
 gnome-text-editor

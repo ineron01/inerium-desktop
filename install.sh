@@ -941,6 +941,18 @@ if command -v kbuildsycoca6 >/dev/null 2>&1; then
     run "kbuildsycoca6 --noincremental >/dev/null 2>&1 || true"
 fi
 
+# Set Google Chrome as default web browser if installed
+if [[ -f /usr/share/applications/google-chrome.desktop ]]; then
+    if command -v xdg-mime >/dev/null 2>&1; then
+        run "xdg-mime default google-chrome.desktop x-scheme-handler/http >/dev/null 2>&1 || true"
+        run "xdg-mime default google-chrome.desktop x-scheme-handler/https >/dev/null 2>&1 || true"
+        run "xdg-mime default google-chrome.desktop text/html >/dev/null 2>&1 || true"
+    fi
+    if command -v xdg-settings >/dev/null 2>&1; then
+        BROWSER="" run "xdg-settings set default-web-browser google-chrome.desktop >/dev/null 2>&1 || true"
+    fi
+fi
+
 # ============================================================================
 # 8. Final Summary & Next Steps
 # ============================================================================

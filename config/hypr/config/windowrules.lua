@@ -76,7 +76,7 @@ hl.window_rule({ match = { class = "^(.*swash)$", title = "^(Swash)$" }, min_siz
 -- Opacity Overrides
 local terminals = "^(kitty|ghostty|[Kk]onsole|Alacritty|gnome-terminal|xfce[0-9]?-terminal)$"
 
-hl.window_rule({ match = { class = "^(firefox|zen)$" }, opacity = "1.0 override" })
+hl.window_rule({ match = { class = "^(google-chrome|firefox|zen)$" }, opacity = "1.0 override" })
 hl.window_rule({ match = { class = terminals }, opacity = "1.0 override" }) -- Override opacity in favor of terminal settings for opacity. If your terminal doesn't support transparency, you can remove this rule.
 hl.window_rule({ match = { class = "^(oculante|com\\.github\\.rafostar\\.Clapper|.*[Cc]lapper.*|mpv|.*plex.*|.*vlc.*)$" }, opacity = "1.0 override" })
 

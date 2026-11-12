@@ -6,7 +6,7 @@
 export PATH="$HOME/.local/bin:$PATH"
 
 # Базовые приложения по умолчанию
-export BROWSER="firefox"
+export BROWSER="google-chrome-stable"
 export TERM="xterm-kitty"
 
 # Интеграция графических тулкитов (Qt, GTK)
