@@ -5,7 +5,6 @@
   "hide_sessions": [
     "hyprland.desktop",
     "hyprland-uwsm.desktop",
-    "hyprland-backup.desktop",
-    "plasma.desktop"
+    "hyprland-backup.desktop"
   ]
 }

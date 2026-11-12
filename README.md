@@ -14,19 +14,38 @@ Universal CachyOS / Arch Linux desktop environment built around **Hyprland (Lua 
 - `bootstrap.sh` — One-command TTY bootstrapper (installs `git`, clones repo, runs `install.sh --with-greeter --fetch-model`)
 - `install.sh` — Universal idempotent installer (`--dry-run`, `--skip-pkgs`, `--skip-build`, `--fetch-model`, `--with-greeter`)
 
-## Quick Start
+## Installation Methods & Quick Start
 
-**Fresh TTY one-line bootstrap (Arch / CachyOS; works in fish and bash):**
+### 1. One-Line Bootstrap (Recommended)
+
+Works identically from a **fresh TTY** or **inside any existing desktop environment** (KDE Plasma, GNOME, etc.):
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop/main/bootstrap.sh)"
 ```
 
-**Local / manual run:**
+- **Interactive TUI:** Auto-detects hardware (GPU, laptop battery/chassis, existing Display Manager) and offers quick choices.
+- **Fast prebuilt binaries (Default):** Downloads compact release archives (~6 MB) directly from GitHub Releases, skipping heavy Cargo compilation.
+- **Smart Fallback:** Automatically falls back to local source build if dynamic shared libraries mismatch.
+- **Preserves existing DE:** When installed on top of KDE/GNOME, it sets Inerium (`Hyprland (UWSM-Waybar)`) as the default session in `greetd` while keeping KDE Plasma untouched and available to launch.
+
+### 2. Silent / Automated Run (for scripts or SSH)
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop/main/bootstrap.sh)" -- -y
+```
+
+### 3. Developer / Source Compilation
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop/main/bootstrap.sh)" -- --from-source
+```
+
+### 4. Local Run from Cloned Repo
 
 ```bash
 ./install.sh --dry-run
-./install.sh --with-greeter --fetch-model
+./install.sh --bin --with-greeter --fetch-model
 ```
 
 ## First-login setup
