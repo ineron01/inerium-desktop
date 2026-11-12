@@ -5,10 +5,10 @@
 # ============================================================================
 set -euo pipefail
 
-theme=~/.config/rofi/kanagawa.rasi
+theme=~/.config/rofi/inerium.rasi
 for arg in "$@"; do
     if [ "$arg" = "--backup" ] || [ "$arg" = "-b" ]; then
-        theme=~/.config/rofi/kanagawa_backup.rasi
+        theme=~/.config/rofi/inerium_backup.rasi
     fi
 done
 

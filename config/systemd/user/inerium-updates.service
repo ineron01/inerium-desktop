@@ -1,0 +1,8 @@
+[Unit]
+Description=Inerium Background Package Updates Cache Updater
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/inerium-updates --check
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle

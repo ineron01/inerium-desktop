@@ -6,7 +6,7 @@ configuration {
     me-accept-entry: "MousePrimary";
 }
 
-@theme "~/.config/rofi/kanagawa.rasi"
+@theme "~/.config/rofi/inerium.rasi"
 
 /* Буфер обмена: шире, крупные превью картинок */
 window { width: 680px; }

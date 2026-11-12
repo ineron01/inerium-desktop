@@ -1,6 +1,6 @@
-// Waybar — Kanagawa Dragon, «островки» на прозрачной панели.
+// Waybar — Inerium Dragon, «островки» на прозрачной панели.
 // Клик ЛКМ/ПКМ по пустому месту панели открывает Центр управления.
-// Все модули статуса используют сверхбыстрые нативные Rust-провайдеры kanagawa-tools.
+// Все модули статуса используют сверхбыстрые нативные Rust-провайдеры inerium-tools.
 {
     "layer": "top",
     "position": "top",
@@ -37,7 +37,7 @@
         "format": "󰣇",
         "tooltip-format": "ЛКМ: Приложения (Rofi)\nПКМ: Буфер обмена",
         "on-click": "uwsm app -- rofi -show drun",
-        "on-click-right": "uwsm app -- $HOME/.local/bin/kanagawa-clipboard"
+        "on-click-right": "uwsm app -- $HOME/.local/bin/inerium-clipboard"
     },
 
     "hyprland/workspaces": {
@@ -54,11 +54,11 @@
         "on-scroll-down": "hyprctl dispatch workspace m-1"
     },
 
-    // Железо (Rust kanagawa-hwmon): температура, клик переключает CPU и ОЗУ через SIGUSR1
+    // Железо (Rust inerium-hwmon): температура, клик переключает CPU и ОЗУ через SIGUSR1
     "custom/hw": {
-        "exec": "$HOME/.local/bin/kanagawa-hwmon",
+        "exec": "$HOME/.local/bin/inerium-hwmon",
         "return-type": "json",
-        "on-click": "$HOME/.local/bin/kanagawa-hwmon --toggle",
+        "on-click": "$HOME/.local/bin/inerium-hwmon --toggle",
         "on-click-right": "uwsm app -- kitty -e btop"
     },
 
@@ -79,7 +79,7 @@
         "title-len": 32,
         "dynamic-len": 40,
         "tooltip-format": "{title}\n{artist}\n\nЛКМ: Карточка трека · ПКМ: Пауза\nКолесо: След./пред. трек",
-        "on-click": "$HOME/.local/bin/kanagawa-popup media",
+        "on-click": "$HOME/.local/bin/inerium-popup media",
         "on-click-right": "playerctl play-pause",
         "on-scroll-up": "playerctl next",
         "on-scroll-down": "playerctl previous"
@@ -89,20 +89,20 @@
         "format": " ",
         "expand": true,
         "tooltip": false,
-        "on-click": "$HOME/.local/bin/kanagawa-popup control",
-        "on-click-right": "$HOME/.local/bin/kanagawa-popup control"
+        "on-click": "$HOME/.local/bin/inerium-popup control",
+        "on-click-right": "$HOME/.local/bin/inerium-popup control"
     },
 
     /* ───────────── ЦЕНТР ───────────── */
 
-    // Часы и календарь (Rust kanagawa-clock): формат HH:MM <-> Day, DD Mon HH:MM, интерактивный календарь
+    // Часы и календарь (Rust inerium-clock): формат HH:MM <-> Day, DD Mon HH:MM, интерактивный календарь
     "custom/clock": {
-        "exec": "$HOME/.local/bin/kanagawa-clock --waybar",
+        "exec": "$HOME/.local/bin/inerium-clock --waybar",
         "return-type": "json",
-        "on-click": "$HOME/.local/bin/kanagawa-clock --toggle",
-        "on-click-right": "$HOME/.local/bin/kanagawa-clock --reset-month",
-        "on-scroll-up": "$HOME/.local/bin/kanagawa-clock --next-month",
-        "on-scroll-down": "$HOME/.local/bin/kanagawa-clock --prev-month",
+        "on-click": "$HOME/.local/bin/inerium-clock --toggle",
+        "on-click-right": "$HOME/.local/bin/inerium-clock --reset-month",
+        "on-scroll-up": "$HOME/.local/bin/inerium-clock --next-month",
+        "on-scroll-down": "$HOME/.local/bin/inerium-clock --prev-month",
         "tooltip": true
     },
 
@@ -112,8 +112,8 @@
         "format": " ",
         "expand": true,
         "tooltip": false,
-        "on-click": "$HOME/.local/bin/kanagawa-popup control",
-        "on-click-right": "$HOME/.local/bin/kanagawa-popup control"
+        "on-click": "$HOME/.local/bin/inerium-popup control",
+        "on-click-right": "$HOME/.local/bin/inerium-popup control"
     },
 
     "tray": {
@@ -135,11 +135,11 @@
         ]
     },
 
-    // Раскладка клавиатуры (Rust kanagawa-layout): синхронное переключение всех клавиатур
+    // Раскладка клавиатуры (Rust inerium-layout): синхронное переключение всех клавиатур
     "custom/keyboard": {
-        "exec": "$HOME/.local/bin/kanagawa-layout --waybar",
+        "exec": "$HOME/.local/bin/inerium-layout --waybar",
         "return-type": "json",
-        "on-click": "$HOME/.local/bin/kanagawa-layout --switch",
+        "on-click": "$HOME/.local/bin/inerium-layout --switch",
         "tooltip": true
     },
 
@@ -156,47 +156,47 @@
         },
         "scroll-step": 2,
         "tooltip-format": "{desc}: {volume}%\n\nЛКМ: Звук · ПКМ: Mute · СКМ: pavucontrol",
-        "on-click": "$HOME/.local/bin/kanagawa-popup audio",
+        "on-click": "$HOME/.local/bin/inerium-popup audio",
         "on-click-right": "swayosd-client --output-volume mute-toggle",
         "on-click-middle": "uwsm app -- pavucontrol",
         "on-scroll-up": "swayosd-client --output-volume +2",
         "on-scroll-down": "swayosd-client --output-volume -2"
     },
 
-    // Сеть (Rust kanagawa-network): мгновенная проверка sysfs, без fork
+    // Сеть (Rust inerium-network): мгновенная проверка sysfs, без fork
     "custom/network": {
-        "exec": "$HOME/.local/bin/kanagawa-network --waybar",
+        "exec": "$HOME/.local/bin/inerium-network --waybar",
         "return-type": "json",
-        "on-click": "$HOME/.local/bin/kanagawa-popup network",
-        "on-click-right": "$HOME/.local/bin/kanagawa-toggle-network.sh",
+        "on-click": "$HOME/.local/bin/inerium-popup network",
+        "on-click-right": "$HOME/.local/bin/inerium-toggle-network.sh",
         "on-click-middle": "uwsm app -- nm-connection-editor",
         "tooltip": true
     },
 
-    // Точка доступа Wi-Fi (Rust kanagawa-hotspot)
+    // Точка доступа Wi-Fi (Rust inerium-hotspot)
     "custom/hotspot": {
         "return-type": "json",
-        "exec": "$HOME/.local/bin/kanagawa-hotspot status",
+        "exec": "$HOME/.local/bin/inerium-hotspot status",
         "interval": 10,
         "signal": 8,
-        "on-click": "$HOME/.local/bin/kanagawa-hotspot toggle"
+        "on-click": "$HOME/.local/bin/inerium-hotspot toggle"
     },
 
-    // Bluetooth (Rust kanagawa-bluetooth): sysfs + rfkill + connected devices
+    // Bluetooth (Rust inerium-bluetooth): sysfs + rfkill + connected devices
     "custom/bluetooth": {
-        "exec": "$HOME/.local/bin/kanagawa-bluetooth --waybar",
+        "exec": "$HOME/.local/bin/inerium-bluetooth --waybar",
         "return-type": "json",
-        "on-click": "$HOME/.local/bin/kanagawa-popup bluetooth",
-        "on-click-right": "$HOME/.local/bin/kanagawa-toggle-bluetooth.sh",
+        "on-click": "$HOME/.local/bin/inerium-popup bluetooth",
+        "on-click-right": "$HOME/.local/bin/inerium-toggle-bluetooth.sh",
         "on-click-middle": "uwsm app -- blueman-manager",
         "tooltip": true
     },
 
-    // Батарея (Rust kanagawa-battery): мгновенная фиксация AC, переключение процент/время
+    // Батарея (Rust inerium-battery): мгновенная фиксация AC, переключение процент/время
     "custom/battery": {
-        "exec": "$HOME/.local/bin/kanagawa-battery --waybar",
+        "exec": "$HOME/.local/bin/inerium-battery --waybar",
         "return-type": "json",
-        "on-click": "$HOME/.local/bin/kanagawa-battery --toggle",
+        "on-click": "$HOME/.local/bin/inerium-battery --toggle",
         "tooltip": true
     },
 
@@ -206,25 +206,25 @@
         "modules": ["custom/dnd", "custom/control", "custom/power"]
     },
 
-    // Выключение/включение уведомлений (Rust kanagawa-dnd): instant sync через SIGUSR1
+    // Выключение/включение уведомлений (Rust inerium-dnd): instant sync через SIGUSR1
     "custom/dnd": {
-        "exec": "$HOME/.local/bin/kanagawa-dnd --waybar",
+        "exec": "$HOME/.local/bin/inerium-dnd --waybar",
         "return-type": "json",
-        "on-click": "$HOME/.local/bin/kanagawa-dnd --toggle",
-        "on-click-right": "$HOME/.local/bin/kanagawa-dnd --toggle",
+        "on-click": "$HOME/.local/bin/inerium-dnd --toggle",
+        "on-click-right": "$HOME/.local/bin/inerium-dnd --toggle",
         "tooltip": true
     },
 
     "custom/control": {
         "format": "",
         "tooltip-format": "Центр управления (Super+A)\nТакже: клик по пустому месту панели",
-        "on-click": "$HOME/.local/bin/kanagawa-popup control",
-        "on-click-right": "$HOME/.local/bin/kanagawa-popup control"
+        "on-click": "$HOME/.local/bin/inerium-popup control",
+        "on-click-right": "$HOME/.local/bin/inerium-popup control"
     },
 
     "custom/power": {
         "format": "⏻",
         "tooltip-format": "Меню питания",
-        "on-click": "$HOME/.local/bin/kanagawa-popup power"
+        "on-click": "$HOME/.local/bin/inerium-popup power"
     }
 }

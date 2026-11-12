@@ -1,0 +1,16 @@
+[Unit]
+Description=Inerium Polkit Authentication Agent
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/inerium-polkit
+Slice=session.slice
+TimeoutStopSec=5sec
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=graphical-session.target

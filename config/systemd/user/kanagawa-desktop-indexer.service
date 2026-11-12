@@ -1,6 +1,0 @@
-[Unit]
-Description=Index user desktop files for multi-layout search
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/sudo -n /usr/local/bin/kanagawa-desktop-indexer

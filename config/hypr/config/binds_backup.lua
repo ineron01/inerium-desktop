@@ -20,7 +20,7 @@ end
 hl.bind(mainMod .. " + Space",   hl.dsp.exec_cmd("rofi -config " .. home .. "/.config/rofi/config_backup.rasi -show drun"))
 
 -- Центр управления (через резервную обертку попапов)
-hl.bind(mainMod .. " + A",       hl.dsp.exec_cmd(home .. "/.local/bin/kanagawa-popup-backup control"))
+hl.bind(mainMod .. " + A",       hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup-backup control"))
 
 -- Калькулятор
 hl.bind(mainMod .. " + Equal",   hl.dsp.exec_cmd("rofi -config " .. home .. "/.config/rofi/config_backup.rasi -show calc"))
@@ -29,12 +29,12 @@ hl.bind(mainMod .. " + Equal",   hl.dsp.exec_cmd("rofi -config " .. home .. "/.c
 hl.bind(mainMod .. " + Tab",     hl.dsp.exec_cmd("rofi -config " .. home .. "/.config/rofi/config_backup.rasi -show window"))
 
 -- Буфер обмена (автономный нативный вызов)
-hl.bind(mainMod .. " + V",       hl.dsp.exec_cmd(home .. "/.local/bin/kanagawa-clipboard --backup"))
+hl.bind(mainMod .. " + V",       hl.dsp.exec_cmd(home .. "/.local/bin/inerium-clipboard --backup"))
 
 -- Блокировка и меню управления питанием
 hl.bind(mainMod .. " + L",       hl.dsp.exec_cmd("hyprlock || loginctl lock-session"))
-hl.bind(mainMod .. " + ALT + C", hl.dsp.exec_cmd(home .. "/.local/bin/kanagawa-popup-backup power"))
-hl.bind("XF86PowerOff",          hl.dsp.exec_cmd(home .. "/.local/bin/kanagawa-popup-backup power"))
+hl.bind(mainMod .. " + ALT + C", hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup-backup power"))
+hl.bind("XF86PowerOff",          hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup-backup power"))
 
 -------------------------------
 ---- НАВИГАЦИЯ ПО РАБОЧИМ СТОЛАМ ----

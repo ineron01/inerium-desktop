@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================================
-# kanagawa-desktop/bootstrap.sh — One-command TTY bootstrap after fresh CachyOS
+# inerium-desktop/bootstrap.sh — One-command TTY bootstrap after fresh CachyOS
 # ============================================================================
 set -euo pipefail
 
-REPO_URL="${KANAGAWA_DESKTOP_REPO:-https://github.com/ineron01/kanagawa-desktop.git}"
-TARGET_DIR="${KANAGAWA_DESKTOP_DIR:-$HOME/Repos/kanagawa-desktop}"
+REPO_URL="${INERIUM_DESKTOP_REPO:-https://github.com/ineron01/inerium-desktop.git}"
+TARGET_DIR="${INERIUM_DESKTOP_DIR:-$HOME/Repos/inerium-desktop}"
 
 # Full upgrade first: installing on top of "pacman -Sy" alone is an unsupported partial upgrade
 # (a fresh install from an older ISO would mix new packages with stale libraries).

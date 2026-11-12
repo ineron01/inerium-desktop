@@ -13,7 +13,7 @@ end
 hl.bind(mainMod .. " + Space",   hl.dsp.exec_cmd("uwsm app -- rofi -show drun"))
 
 -- Центр управления
-hl.bind(mainMod .. " + A",       hl.dsp.exec_cmd(home .. "/.local/bin/kanagawa-popup control"))
+hl.bind(mainMod .. " + A",       hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup control"))
 
 -- Калькулятор
 hl.bind(mainMod .. " + Equal",   hl.dsp.exec_cmd("uwsm app -- rofi -show calc"))
@@ -22,12 +22,12 @@ hl.bind(mainMod .. " + Equal",   hl.dsp.exec_cmd("uwsm app -- rofi -show calc"))
 hl.bind(mainMod .. " + Tab",     hl.dsp.exec_cmd("uwsm app -- rofi -show window"))
 
 -- Буфер обмена
-hl.bind(mainMod .. " + V",       hl.dsp.exec_cmd("uwsm app -- " .. home .. "/.local/bin/kanagawa-clipboard"))
+hl.bind(mainMod .. " + V",       hl.dsp.exec_cmd("uwsm app -- " .. home .. "/.local/bin/inerium-clipboard"))
 
 -- Блокировка и меню управления питанием
 hl.bind(mainMod .. " + L",       hl.dsp.exec_cmd("hyprlock || loginctl lock-session"))
-hl.bind(mainMod .. " + ALT + C", hl.dsp.exec_cmd(home .. "/.local/bin/kanagawa-popup power"))
-hl.bind("XF86PowerOff",          hl.dsp.exec_cmd(home .. "/.local/bin/kanagawa-popup power"))
+hl.bind(mainMod .. " + ALT + C", hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup power"))
+hl.bind("XF86PowerOff",          hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup power"))
 
 -------------------------------
 ---- WORKSPACES NAVIGATION ----

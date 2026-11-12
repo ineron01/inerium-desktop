@@ -11,11 +11,11 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 24")
 
     -- Окружение в systemd, затем фоновые демоны: попапы, OSD, IPC-мост и буфер обмена
-    hl.exec_cmd("sh -c 'dbus-update-activation-environment --systemd --all; systemctl --user start hypr-ipc-bridge.service kanagawa-osd-watcher.service cliphist.service cliphist-images.service; systemctl --user restart kanagawa-popups.service'")
+    hl.exec_cmd("sh -c 'dbus-update-activation-environment --systemd --all; systemctl --user start hypr-ipc-bridge.service inerium-osd-watcher.service cliphist.service cliphist-images.service; systemctl --user restart inerium-popups.service'")
     hl.exec_cmd("xhost +SI:localuser:root")
 
     -- Аутентификация Polkit
-    hl.exec_cmd("sh -c '" .. home .. "/.local/bin/kanagawa-polkit || hyprpolkitagent || /usr/lib/polkit-kde-authentication-agent-1'")
+    hl.exec_cmd("sh -c '" .. home .. "/.local/bin/inerium-polkit || hyprpolkitagent || /usr/lib/polkit-kde-authentication-agent-1'")
 
     -- Демон обоев
     hl.exec_cmd(home .. "/.local/bin/hyprpaper")
@@ -36,5 +36,5 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("pgrep -x AmneziaVPN >/dev/null || /opt/AmneziaVPN/bin/AmneziaVPN --autostart")
 
     -- Индексация приложений для поиска в лаунчере на любых раскладках (QWERTY <-> JCUKEN)
-    hl.exec_cmd("sudo -n /usr/local/bin/kanagawa-desktop-indexer")
+    hl.exec_cmd("sudo -n /usr/local/bin/inerium-desktop-indexer")
 end)

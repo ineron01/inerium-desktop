@@ -2,8 +2,8 @@
 
 -- Generic floating position
 hl.window_rule({ match = { float = true }, persistent_size = true })
-hl.window_rule({ match = { class = "^(kanagawa-first-login)$" }, float = true, center = true })
-hl.window_rule({ match = { class = "^(org\\.kanagawa\\.setup|kanagawa-setup)$" }, float = true, center = true, size = { "900", "640" } })
+hl.window_rule({ match = { class = "^(inerium-first-login)$" }, float = true, center = true })
+hl.window_rule({ match = { class = "^(org\\.inerium\\.setup|inerium-setup)$" }, float = true, center = true, size = { "900", "640" } })
 
 -- Picture-in-Picture
 hl.window_rule({
@@ -103,7 +103,7 @@ hl.window_rule({
 })
 
 hl.window_rule({
-    match = { class = "^(phone-webcam-gui|org\\.kanagawa\\.camera)$" },
+    match = { class = "^(phone-webcam-gui|org\\.inerium\\.camera)$" },
     float = true,
     center = true,
     size = { "380", "560" },
@@ -132,7 +132,7 @@ hl.window_rule({
 
 -- Окно ввода пароля Polkit (подтверждение действий суперпользователя)
 hl.window_rule({
-    match                = { class = "^(org\\.kanagawa\\.polkit|kanagawa-polkit|hyprpolkitagent)$" },
+    match                = { class = "^(org\\.inerium\\.polkit|inerium-polkit|hyprpolkitagent)$" },
     float                = true,
     center               = true,
     no_shortcuts_inhibit = true,

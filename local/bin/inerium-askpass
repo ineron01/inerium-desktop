@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# inerium-askpass — диалог запроса пароля в единой эстетике Inerium Dragon
+# Используется в качестве SUDO_ASKPASS / SSH_ASKPASS для скриптов и GUI-запросов
+# ==============================================================================
+
+prompt="${1:-Требуется подтверждение пароля:}"
+
+# Очищаем промпт от лишних префиксов и двоеточий
+clean_prompt="$(echo "$prompt" | sed -e 's/^\[sudo\] //' -e 's/:$//')"
+
+rofi -dmenu \
+     -password \
+     -no-fixed-num-lines \
+     -p "󰌾 " \
+     -mesg "$clean_prompt" \
+     -theme "$HOME/.config/rofi/askpass.rasi"

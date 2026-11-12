@@ -21,7 +21,7 @@ configuration {
     display-calc: "󰃬";
 }
 
-@theme "~/.config/rofi/kanagawa_backup.rasi"
+@theme "~/.config/rofi/inerium_backup.rasi"
 
 /* Лаунчер приложений */
 entry { placeholder: "Поиск приложений (Резервная сессия)…"; }

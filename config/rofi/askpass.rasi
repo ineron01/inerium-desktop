@@ -1,8 +1,8 @@
 /**
- * Kanagawa Dragon — Askpass Theme (SUDO / SSH / подтверждение действий)
+ * Inerium Dragon — Askpass Theme (SUDO / SSH / подтверждение действий)
  **/
 
-@theme "~/.config/rofi/kanagawa.rasi"
+@theme "~/.config/rofi/inerium.rasi"
 
 window {
     width: 440px;

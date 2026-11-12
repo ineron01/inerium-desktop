@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# kanagawa-desktop/install.sh — Universal Arch/CachyOS Hyprland + Rust Installer
+# inerium-desktop/install.sh — Universal Arch/CachyOS Hyprland + Rust Installer
 # ============================================================================
 set -euo pipefail
 
@@ -23,9 +23,9 @@ Usage: $(basename "$0") [OPTIONS]
 Options:
   --dry-run       Print planned actions without modifying the system
   --skip-pkgs     Skip paru package installation
-  --skip-build    Skip Cargo workspace and kanagawa-polkit compilation
+  --skip-build    Skip Cargo workspace and inerium-polkit compilation
   --fetch-model   Download silueta.onnx (~43 MB) if missing
-  --with-greeter  Install and configure greetd + kanagawa-greeter (/etc/greetd/)
+  --with-greeter  Install and configure greetd + inerium-greeter (/etc/greetd/)
   --workspaces N  Workspaces per monitor (1-9, default: 3)
   -h, --help      Show this help
 EOF
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-log() { printf '[kanagawa-desktop] %s\n' "$*"; }
+log() { printf '[inerium-desktop] %s\n' "$*"; }
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "Run install.sh as your regular user (not root/sudo); it calls sudo itself." >&2
@@ -53,13 +53,13 @@ fi
 
 # Ask for the sudo password once and keep the timestamp fresh, so long AUR/Cargo builds
 # never stall on a second prompt (a nested installer reuses the parent's keepalive).
-if [[ "$DRY_RUN" -eq 0 && -z "${KANAGAWA_SUDO_KEEPALIVE:-}" ]]; then
+if [[ "$DRY_RUN" -eq 0 && -z "${INERIUM_SUDO_KEEPALIVE:-}" ]]; then
     if ! sudo -n true 2>/dev/null; then
         sudo -v
     fi
     ( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
-    export KANAGAWA_SUDO_KEEPALIVE=$!
-    trap 'kill "$KANAGAWA_SUDO_KEEPALIVE" 2>/dev/null || true' EXIT
+    export INERIUM_SUDO_KEEPALIVE=$!
+    trap 'kill "$INERIUM_SUDO_KEEPALIVE" 2>/dev/null || true' EXIT
 fi
 
 run() {
@@ -218,29 +218,29 @@ if [[ "$SKIP_PKGS" -eq 0 ]]; then
     done
 fi
 
-# 2. Build Rust workspace + standalone kanagawa-polkit
+# 2. Build Rust workspace + standalone inerium-polkit
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
     if command -v rustup >/dev/null 2>&1 && ! rustc --version >/dev/null 2>&1; then
         log "Initializing default Rust toolchain via rustup..."
         run "rustup default stable"
     fi
-    log "Building universal Rust workspace (kanagawa-tools, kanagawa-shell, kanagawa-greeter, kanagawa-setup, dolphin-converter)..."
+    log "Building universal Rust workspace (inerium-tools, inerium-shell, inerium-greeter, inerium-setup, dolphin-converter)..."
     run "cargo build --manifest-path '$REPO_DIR/Cargo.toml' --workspace --release"
 
-    log "Building standalone kanagawa-polkit..."
-    run "cargo build --manifest-path '$REPO_DIR/standalone/kanagawa-polkit/Cargo.toml' --release"
+    log "Building standalone inerium-polkit..."
+    run "cargo build --manifest-path '$REPO_DIR/standalone/inerium-polkit/Cargo.toml' --release"
 
     log "Installing compiled binaries atomically..."
     run "mkdir -p '$HOME/.local/bin'"
     for bin in \
-        hypr-ipc-bridge kanagawa-battery kanagawa-bluetooth kanagawa-clipboard \
-        kanagawa-clock kanagawa-dnd kanagawa-hotspot kanagawa-hwmon \
-        kanagawa-layout kanagawa-network kanagawa-osd-watcher kanagawa-popup \
-        kanagawa-updates kanagawa-shell kanagawa-setup dolphin-convert; do
+        hypr-ipc-bridge inerium-battery inerium-bluetooth inerium-clipboard \
+        inerium-clock inerium-dnd inerium-hotspot inerium-hwmon \
+        inerium-layout inerium-network inerium-osd-watcher inerium-popup \
+        inerium-updates inerium-shell inerium-setup dolphin-convert; do
         run "install -m 755 '$REPO_DIR/target/release/$bin' '$HOME/.local/bin/$bin'"
     done
-    run "install -m 755 '$REPO_DIR/standalone/kanagawa-polkit/target/release/kanagawa-polkit' '$HOME/.local/bin/kanagawa-polkit'"
-    install_root_if_changed 755 "$REPO_DIR/target/release/kanagawa-greeter" /usr/local/bin/kanagawa-greeter
+    run "install -m 755 '$REPO_DIR/standalone/inerium-polkit/target/release/inerium-polkit' '$HOME/.local/bin/inerium-polkit'"
+    install_root_if_changed 755 "$REPO_DIR/target/release/inerium-greeter" /usr/local/bin/inerium-greeter
 fi
 
 # 3. Install user scripts & system indexer
@@ -257,15 +257,15 @@ done
 for desktop in "$REPO_DIR"/local/share/applications/*.desktop; do
     link_item "$desktop" "$HOME/.local/share/applications/$(basename "$desktop")"
 done
-run "mkdir -p '${XDG_CONFIG_HOME:-$HOME/.config}/kanagawa/first-login.d'"
+run "mkdir -p '${XDG_CONFIG_HOME:-$HOME/.config}/inerium/first-login.d'"
 if [[ -d "$REPO_DIR/first-login.d" ]]; then
     for step in "$REPO_DIR"/first-login.d/*; do
         [[ -e "$step" ]] || continue
-        link_item "$step" "${XDG_CONFIG_HOME:-$HOME/.config}/kanagawa/first-login.d/$(basename "$step")"
+        link_item "$step" "${XDG_CONFIG_HOME:-$HOME/.config}/inerium/first-login.d/$(basename "$step")"
     done
 fi
-install_root_if_changed 755 "$REPO_DIR/system/usr/local/bin/kanagawa-desktop-indexer" /usr/local/bin/kanagawa-desktop-indexer
-install_sudoers_template "$REPO_DIR/system/etc/sudoers.d/kanagawa-desktop-indexer.template" /etc/sudoers.d/kanagawa-desktop-indexer
+install_root_if_changed 755 "$REPO_DIR/system/usr/local/bin/inerium-desktop-indexer" /usr/local/bin/inerium-desktop-indexer
+install_sudoers_template "$REPO_DIR/system/etc/sudoers.d/inerium-desktop-indexer.template" /etc/sudoers.d/inerium-desktop-indexer
 
 # 4. Symlink ~/.config directories and Hyprland files
 log "Linking desktop configurations into ~/.config..."
@@ -344,7 +344,7 @@ detect_and_generate_local_overlays() {
         else
             mkdir -p "$(dirname "$env_local")"
             {
-                echo "-- Auto-generated by kanagawa-desktop hardware detection (gitignored)"
+                echo "-- Auto-generated by inerium-desktop hardware detection (gitignored)"
                 if [[ "$has_nv" -eq 1 && "$has_amd" -eq 0 && "$has_intel" -eq 0 ]]; then
                     echo 'hl.env("LIBVA_DRIVER_NAME", "nvidia")'
                     echo 'hl.env("GBM_BACKEND", "nvidia-drm")'
@@ -378,7 +378,7 @@ detect_and_generate_local_overlays() {
             mkdir -p "$(dirname "$idle_local")"
             if [[ "$is_laptop" -eq 1 ]]; then
                 cat > "${idle_local}.tmp" <<'EOF'
-# Auto-generated by kanagawa-desktop (laptop chassis, gitignored)
+# Auto-generated by inerium-desktop (laptop chassis, gitignored)
 general {
     lock_cmd = pidof hyprlock || hyprlock
     before_sleep_cmd = loginctl lock-session
@@ -409,7 +409,7 @@ listener {
 EOF
             else
                 cat > "${idle_local}.tmp" <<'EOF'
-# Auto-generated by kanagawa-desktop (desktop chassis, gitignored)
+# Auto-generated by inerium-desktop (desktop chassis, gitignored)
 general {
     lock_cmd = pidof hyprlock || hyprlock
     before_sleep_cmd = loginctl lock-session
@@ -454,7 +454,7 @@ EOF
         else
             mkdir -p "$(dirname "$inputs_local")"
             cat > "${inputs_local}.tmp" <<EOF
--- Auto-generated by kanagawa-desktop (gitignored)
+-- Auto-generated by inerium-desktop (gitignored)
 hl.config({
     input = {
         kb_layout  = "${kb_layout}",
@@ -477,7 +477,7 @@ EOF
                 python3 - "$mon_json" "$mons_local" <<'PYEOF' || true
 import json, math, os, sys
 mons = json.loads(sys.argv[1])
-lines = ["-- Auto-generated by kanagawa-desktop HiDPI detection (gitignored)\n"]
+lines = ["-- Auto-generated by inerium-desktop HiDPI detection (gitignored)\n"]
 for m in mons:
     name = m.get("name", "")
     if not name:
@@ -549,19 +549,19 @@ else
     log "      Run with --fetch-model (or download from $SILUETA_URL) for Dolphin AI background removal."
 fi
 
-# 6. Wayland session entries & optional greetd + kanagawa-greeter setup
+# 6. Wayland session entries & optional greetd + inerium-greeter setup
 for sess in "$REPO_DIR"/system/usr/share/wayland-sessions/*.desktop; do
     [[ -f "$sess" ]] || continue
     install_root_if_changed 644 "$sess" "/usr/share/wayland-sessions/$(basename "$sess")"
 done
 
 if [[ "$WITH_GREETER" -eq 1 ]]; then
-    log "Configuring greetd + kanagawa-greeter..."
+    log "Configuring greetd + inerium-greeter..."
     if [[ "$SKIP_PKGS" -eq 0 ]]; then
         ensure_paru
         install_pkgs greetd cage
     fi
-    install_root_if_changed 644 "$REPO_DIR/assets/backgrounds/kanagawa-greeter.jpg" /usr/share/backgrounds/kanagawa-greeter.jpg
+    install_root_if_changed 644 "$REPO_DIR/assets/backgrounds/inerium-greeter.jpg" /usr/share/backgrounds/inerium-greeter.jpg
     if [[ -f /etc/greetd/config.toml ]] && ! cmp -s "$REPO_DIR/system/etc/greetd/config.toml" /etc/greetd/config.toml 2>/dev/null; then
         log "Backing up existing /etc/greetd/config.toml -> /etc/greetd/config.toml.bak.${BACKUP_STAMP}"
         run "sudo cp -a /etc/greetd/config.toml '/etc/greetd/config.toml.bak.${BACKUP_STAMP}'"
@@ -569,11 +569,11 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
     install_root_if_changed 644 "$REPO_DIR/system/etc/greetd/config.toml" /etc/greetd/config.toml
     install_root_if_changed 644 "$REPO_DIR/system/etc/greetd/environments" /etc/greetd/environments
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        printf '[DRY-RUN] render %s -> /etc/greetd/kanagawa-greeter.json\n' "$REPO_DIR/system/etc/greetd/kanagawa-greeter.json.template"
+        printf '[DRY-RUN] render %s -> /etc/greetd/inerium-greeter.json\n' "$REPO_DIR/system/etc/greetd/inerium-greeter.json.template"
     else
         greeter_tmp="$(mktemp)"
-        sed -e "s|__HOME__|$HOME|g" -e "s|__USER__|$USER|g" "$REPO_DIR/system/etc/greetd/kanagawa-greeter.json.template" > "$greeter_tmp"
-        install_root_if_changed 644 "$greeter_tmp" /etc/greetd/kanagawa-greeter.json
+        sed -e "s|__HOME__|$HOME|g" -e "s|__USER__|$USER|g" "$REPO_DIR/system/etc/greetd/inerium-greeter.json.template" > "$greeter_tmp"
+        install_root_if_changed 644 "$greeter_tmp" /etc/greetd/inerium-greeter.json
         rm -f "$greeter_tmp"
     fi
     for dm in sddm.service gdm.service lightdm.service; do
@@ -589,7 +589,7 @@ if [[ "$WITH_GREETER" -eq 1 ]]; then
 fi
 
 # 7. Enable systemd user units (live D-Bus or offline TTY symlink fallback) & rebuild KDE cache
-USER_UNITS="cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service hypridle.service kanagawa-desktop-indexer.path kanagawa-osd-watcher.service kanagawa-polkit.service kanagawa-popups.service kanagawa-updates.timer mako.service swayosd-server.service waybar.service"
+USER_UNITS="cliphist.service cliphist-images.service hypr-ipc-bridge.service hyprpaper.service hypridle.service inerium-desktop-indexer.path inerium-osd-watcher.service inerium-polkit.service inerium-popups.service inerium-updates.timer mako.service swayosd-server.service waybar.service"
 MASK_UNITS="hyprpolkitagent.service at-spi2-registryd.service at-spi-dbus-bus.service"
 if systemctl --user show-environment >/dev/null 2>&1; then
     log "Refreshing systemd user daemon & enabling user services..."
@@ -617,4 +617,4 @@ if command -v kbuildsycoca6 >/dev/null 2>&1; then
     run "kbuildsycoca6 --noincremental >/dev/null 2>&1 || true"
 fi
 
-log "Base kanagawa-desktop installation complete!"
+log "Base inerium-desktop installation complete!"

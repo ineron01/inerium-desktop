@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# ============================================================================
+# inerium-first-login — guided one-time setup steps (account sign-ins etc.)
+# Steps are executables in ~/.config/inerium/first-login.d/ (provided by overlays;
+# this repo ships none). Each step must:
+#   - exit 0 for "<step> --check" when it is already configured (nothing is asked),
+#   - perform the setup interactively when run without arguments.
+# Usage: inerium-first-login [--autostart | --reset]
+#   --autostart  open a terminal only if some step is still pending (session start)
+#   --reset      forget completed/dismissed steps so all are offered again
+# ============================================================================
+set -uo pipefail
+
+STEPS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/inerium/first-login.d"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/inerium/first-login"
+
+pending() {
+    local s name
+    mkdir -p "$STATE_DIR"
+    for s in "$STEPS_DIR"/*; do
+        [[ -f "$s" && -x "$s" ]] || continue
+        name="$(basename "$s")"
+        [[ -e "$STATE_DIR/$name.done" ]] && continue
+        # Already configured by other means (e.g. restored home): mark done silently
+        if "$s" --check >/dev/null 2>&1; then
+            touch "$STATE_DIR/$name.done"
+            continue
+        fi
+        printf '%s\n' "$s"
+    done
+}
+
+case "${1:-}" in
+    --autostart)
+        [[ -n "$(pending)" ]] || exit 0
+        exec kitty --class inerium-first-login --title "Первичная настройка" "$0"
+        ;;
+    --reset)
+        rm -rf "$STATE_DIR"
+        echo "Все шаги будут предложены снова."
+        exit 0
+        ;;
+    "") ;;
+    *)
+        echo "Usage: $(basename "$0") [--autostart | --reset]" >&2
+        exit 1
+        ;;
+esac
+
+mapfile -t steps < <(pending)
+if [[ ${#steps[@]} -eq 0 ]]; then
+    echo "Все шаги первичной настройки уже выполнены (повторить: inerium-first-login --reset)."
+    read -rp "Enter — закрыть "
+    exit 0
+fi
+
+echo "Первичная настройка: шагов — ${#steps[@]}."
+for s in "${steps[@]}"; do
+    name="$(basename "$s")"
+    title="$(sed -n 's/^# *Title: *//p' "$s" | head -1)"
+    echo
+    echo "=== ${title:-$name} ==="
+    read -rp "Enter — выполнить, s — отложить до следующего входа, n — больше не спрашивать: " ans
+    case "$ans" in
+        s|S) continue ;;
+        n|N) touch "$STATE_DIR/$name.done"; continue ;;
+    esac
+    if "$s"; then
+        touch "$STATE_DIR/$name.done"
+        echo "✓ Готово"
+    else
+        echo "✗ Не завершено — шаг будет предложен при следующем входе"
+    fi
+done
+echo
+read -rp "Enter — закрыть "

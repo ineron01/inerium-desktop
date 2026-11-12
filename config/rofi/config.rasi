@@ -17,7 +17,7 @@ configuration {
     run-shell-command: "uwsm app -- {terminal} -e {cmd}";
 }
 
-@theme "~/.config/rofi/kanagawa.rasi"
+@theme "~/.config/rofi/inerium.rasi"
 
 /* Лаунчер */
 entry { placeholder: "Поиск приложений…"; }

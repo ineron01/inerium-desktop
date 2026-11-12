@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic Inerium Package Updates Check
+PartOf=graphical-session.target
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

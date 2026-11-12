@@ -1,6 +1,6 @@
 -- Universal workspace rules (skipped if host-specific config.monitors_local overrides them)
 
-if KANAGAWA_WORKSPACES_OVERRIDDEN then
+if INERIUM_WORKSPACES_OVERRIDDEN then
     return
 end
 

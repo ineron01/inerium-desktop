@@ -1,14 +1,14 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/kanagawa-tools",
-    "crates/kanagawa-shell",
-    "crates/kanagawa-greeter",
-    "crates/kanagawa-setup",
+    "crates/inerium-tools",
+    "crates/inerium-shell",
+    "crates/inerium-greeter",
+    "crates/inerium-setup",
     "crates/dolphin-converter",
 ]
 exclude = [
-    "standalone/kanagawa-polkit",
+    "standalone/inerium-polkit",
 ]
 
 [profile.release]

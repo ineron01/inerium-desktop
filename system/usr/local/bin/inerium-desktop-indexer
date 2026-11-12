@@ -1,0 +1,352 @@
+#!/usr/bin/env python3
+"""
+inerium-desktop-indexer
+Automated desktop entry enhancer for layout-independent search in Rofi / Waybar.
+Indexes all applications in /usr/share/applications into /usr/local/share/applications,
+adding multi-layout search keywords (QWERTY <-> JCUKEN layout inversion and phonetic transliteration).
+"""
+
+import os
+import sys
+import glob
+import re
+import shutil
+
+TARGET_DIR = "/usr/local/share/applications"
+SOURCE_DIRS = ["/usr/share/applications"]
+USER_DIRS = glob.glob("/home/*/.local/share/applications")
+
+# Keyboard layout translation tables
+QWERTY_TO_JCUKEN = str.maketrans(
+    "`qwertyuiop[]asdfghjkl;'zxcvbnm,./~QWERTYUIOP{}ASDFGHJKL:\"ZXCVBNM<>?",
+    "ёйцукенгшщзхъфывапролджэячсмитьбю.ЁЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ,"
+)
+JCUKEN_TO_QWERTY = str.maketrans(
+    "ёйцукенгшщзхъфывапролджэячсмитьбю.ЁЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ,",
+    "`qwertyuiop[]asdfghjkl;'zxcvbnm,./~QWERTYUIOP{}ASDFGHJKL:\"ZXCVBNM<>?"
+)
+
+# Phonetic transliteration dictionary for English -> Russian
+CYR_TO_LAT = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+    'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch',
+    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+}
+
+LAT_TO_CYR_RULES = [
+    ('shch', 'щ'), ('sch', 'щ'), ('ch', 'ч'), ('sh', 'ш'), ('zh', 'ж'),
+    ('kh', 'х'), ('ts', 'ц'), ('ya', 'я'), ('yu', 'ю'), ('yo', 'ё'),
+    ('ph', 'ф'), ('th', 'т'), ('oo', 'у'), ('ee', 'и'),
+    ('a', 'а'), ('b', 'б'), ('c', 'к'), ('d', 'д'), ('e', 'е'),
+    ('f', 'ф'), ('g', 'г'), ('h', 'х'), ('i', 'и'), ('j', 'дж'),
+    ('k', 'к'), ('l', 'л'), ('m', 'ь'), ('n', 'н'), ('o', 'о'),
+    ('p', 'п'), ('q', 'к'), ('r', 'р'), ('s', 'с'), ('t', 'т'),
+    ('u', 'у'), ('v', 'в'), ('w', 'в'), ('x', 'кс'), ('y', 'и'),
+    ('z', 'з')
+]
+
+KNOWN_ALIASES = {
+    "telegram": ["телеграм", "телеграмм", "телега", "тг", "tg", "tlg", "тлг"],
+    "direct": ["директ", "прямой", "безвпн", "вшкусе", "ghtvjq"],
+    "novpn": ["безвпн", "директ", "прямой", "тщмзт", "без"],
+    "vpn": ["впн", "мзт", "ызт"],
+    "chrome": ["хром", "гугл", "гуглхром", "скщьу"],
+    "google-chrome": ["хром", "гугл", "гуглхром", "скщьу"],
+    "google": ["гугл"],
+    "firefox": ["файрфокс", "фаерфокс", "огнелис", "лиса", "мозилла"],
+    "brave": ["брейв", "браве"],
+    "code": ["код", "вскод", "вижуал"],
+    "vscodium": ["код", "вскод", "кодиум"],
+    "alacritty": ["алакритти", "терминал", "консоль"],
+    "kitty": ["китти", "терминал", "консоль"],
+    "discord": ["дискорд", "дс"],
+    "vesktop": ["дискорд", "вескотоп"],
+    "steam": ["стим", "игры"],
+    "spotify": ["спотифай", "музыка"],
+    "obs": ["обс", "запись", "стрим"],
+    "vlc": ["влс", "видеоплеер", "плеер"],
+    "thunar": ["тунар", "файлы", "проводник"],
+    "dolphin": ["дельфин", "файлы", "проводник"],
+    "calculator": ["калькулятор", "calc", "счет"],
+    "kcalc": ["калькулятор"],
+    "galculator": ["калькулятор"],
+    "qalculate": ["калькулятор"],
+    "bottles": ["бутылки", "вайн"],
+    "heroic": ["хероик", "игры"],
+    "waydroid": ["вайдроид", "андроид"],
+    "amneziavpn": ["амнезия", "впн", "мзт", "ызт"],
+    "amnezia": ["амнезия", "впн", "мзт", "ызт"],
+    "mcontrolcenter": ["мсс", "кулеры", "вентиляторы"],
+    "btop": ["битоп", "монитор", "процессы"],
+    "obsidian": ["обсидиан", "заметки"],
+    "antigravity": ["антигравити", "аги"],
+    "pavucontrol": ["громкость", "микшер", "звук"],
+    "blueman": ["блютуз", "блютус"],
+    "btrfs-assistant": ["бтрфс", "снапшоты", "снимки", "бэкапы"],
+    "settings": ["настройки", "параметры"],
+    "systemsettings": ["настройки", "параметры"],
+    "terminal": ["терминал", "консоль"],
+    "gimp": ["гимп", "фотошоп"],
+    "mpv": ["мпв", "видеоплеер", "плеер"],
+    "clapper": ["клаппер", "видеоплеер", "плеер", "видео"],
+    "oculante": ["окуланте", "просмотрщик", "картинки", "фото"]
+}
+
+ALIAS_SET = {a for aliases in KNOWN_ALIASES.values() for a in aliases}
+
+# Служебные части имён .desktop-файлов, которые совпадают почти со всеми приложениями
+STOPWORDS = {
+    "org", "com", "net", "dev", "app", "io", "github", "gitlab", "desktop", "kde", "gnome",
+    "freedesktop", "application", "the", "and", "for", "with", "usr", "bin", "share", "opt",
+}
+
+def invert_qwerty_to_jcuken(text: str) -> str:
+    return text.translate(QWERTY_TO_JCUKEN)
+
+def invert_jcuken_to_qwerty(text: str) -> str:
+    return text.translate(JCUKEN_TO_QWERTY)
+
+def latin_to_cyrillic_phonetic(word: str) -> str:
+    w = word.lower()
+    for lat, cyr in LAT_TO_CYR_RULES:
+        w = w.replace(lat, cyr)
+    return w
+
+def cyrillic_to_latin_phonetic(word: str) -> str:
+    w = word.lower()
+    res = []
+    for ch in w:
+        res.append(CYR_TO_LAT.get(ch, ch))
+    return "".join(res)
+
+def extract_tokens(text: str) -> list[str]:
+    # Split by any non-alphanumeric character (spaces, hyphens, underscores, dots, etc.)
+    raw = re.split(r'[^a-zA-Zа-яА-Я0-9ёЁ]+', text)
+    tokens = []
+    for r in raw:
+        r_clean = r.strip().lower()
+        if len(r_clean) >= 2:
+            tokens.append(r_clean)
+    return tokens
+
+def generate_layout_keywords(metadata_strings: list[str], plain_keywords: list[str] = ()) -> list[str]:
+    """Инверсия раскладки и алиасы — только для токенов из имени приложения.
+    Обычные ключевые слова (Keywords=) добавляются как есть: их инверсия давала
+    тарабарщину вроде htgjpbnjhbq («репозиторий»), совпадающую с короткими запросами."""
+    keywords = set()
+    all_tokens = set()
+    for kw in plain_keywords:
+        for token in extract_tokens(kw):
+            if token not in STOPWORDS:
+                keywords.add(token)
+
+    for s in metadata_strings:
+        if not s:
+            continue
+        for token in extract_tokens(s):
+            all_tokens.add(token)
+
+    for token in all_tokens:
+        if token in STOPWORDS:
+            continue
+        # 1. Direct token
+        keywords.add(token)
+
+        is_latin = bool(re.search(r'[a-zA-Z]', token))
+        is_cyrillic = bool(re.search(r'[а-яА-ЯёЁ]', token))
+
+        if is_latin and not is_cyrillic:
+            # QWERTY -> JCUKEN (e.g. telegram -> еудупкфь)
+            jcuken = invert_qwerty_to_jcuken(token)
+            if jcuken != token:
+                keywords.add(jcuken)
+
+            # Check known aliases
+            if token in KNOWN_ALIASES:
+                for alias in KNOWN_ALIASES[token]:
+                    keywords.add(alias)
+                    # And alias on the other layout (телеграм -> ntktuhfv); короткие (тг) не
+                    # инвертируем — получается мусор вроде "nu", совпадающий со всем подряд
+                    if len(alias) >= 3:
+                        if re.search(r'[а-яё]', alias):
+                            keywords.add(invert_jcuken_to_qwerty(alias))
+                        else:
+                            keywords.add(invert_qwerty_to_jcuken(alias))
+            # Фонетический транслит латиницы в кириллицу убран: давал мусорные ключи
+            # (telegram -> телеграь), которые ловили посторонние запросы
+
+        elif is_cyrillic and not is_latin:
+            # JCUKEN -> QWERTY (e.g. калькулятор -> rfkmrekznjh)
+            qwerty = invert_jcuken_to_qwerty(token)
+            if qwerty != token:
+                keywords.add(qwerty)
+
+            # Phonetic transliteration (e.g. калькулятор -> kalkulyator)
+            phon_lat = cyrillic_to_latin_phonetic(token)
+            if phon_lat and phon_lat != token:
+                keywords.add(phon_lat)
+                keywords.add(invert_qwerty_to_jcuken(phon_lat))
+
+    # Clean and filter
+    valid = []
+    for k in sorted(keywords):
+        k_clean = k.strip().lower()
+        if (len(k_clean) >= 3 or k_clean in ALIAS_SET) and ';' not in k_clean and '\n' not in k_clean:
+            valid.append(k_clean)
+    return valid
+
+def process_desktop_file(src_path: str, dst_path: str, use_existing_keywords: bool = True) -> bool:
+    try:
+        with open(src_path, 'r', encoding='utf-8', errors='replace') as f:
+            lines = f.readlines()
+    except Exception as e:
+        print(f"Error reading {src_path}: {e}")
+        return False
+
+    metadata = []
+    existing_keywords = []
+    in_desktop_entry = False
+
+    for line in lines:
+        sline = line.strip()
+        if sline == "[Desktop Entry]":
+            in_desktop_entry = True
+            continue
+        elif sline.startswith("[") and sline.endswith("]"):
+            in_desktop_entry = False
+            continue
+
+        if in_desktop_entry:
+            # Только имена и ключевые слова (без Comment и чужих локалей — от них
+            # и шли ложные совпадения вроде «tele» -> CachyOS Hello)
+            for prefix in ("Name", "GenericName", "Keywords"):
+                if prefix == "Keywords" and not use_existing_keywords:
+                    continue
+                if re.match(rf'^{prefix}(\[ru(_RU)?\])?=', sline):
+                    val = sline.split("=", 1)[1]
+                    if prefix == "Keywords":
+                        existing_keywords.extend([k for k in val.split(";") if k.strip()])
+                    else:
+                        metadata.append(val)
+            if sline.startswith("StartupWMClass="):
+                metadata.append(sline.split("=", 1)[1])
+            if sline.startswith("Exec=") and len(metadata) < 64:
+                # Имя исполняемого файла без пути и аргументов
+                parts = sline.split("=", 1)[1].split()
+                if parts:
+                    metadata.append(os.path.basename(parts[0]))
+
+    # Base name also provides helpful clue (e.g. "org.telegram.desktop")
+    base_name = os.path.basename(src_path).replace(".desktop", "")
+    metadata.append(base_name)
+
+    all_keywords = generate_layout_keywords(metadata, existing_keywords)
+    if not all_keywords:
+        return False
+
+    kw_string = ";".join(all_keywords) + ";"
+
+    # Reconstruct file
+    new_lines = []
+    in_main = False
+    has_inserted_kw = False
+
+    for line in lines:
+        sline = line.strip()
+        if sline == "[Desktop Entry]":
+            in_main = True
+            new_lines.append(line)
+            continue
+        elif sline.startswith("[") and sline.endswith("]"):
+            if in_main and not has_inserted_kw:
+                new_lines.append(f"Keywords={kw_string}\n")
+                new_lines.append(f"Keywords[ru]={kw_string}\n")
+                has_inserted_kw = True
+            in_main = False
+            new_lines.append(line)
+            continue
+
+        if in_main:
+            if sline.startswith("Keywords=") or sline.startswith("Keywords["):
+                # Replace existing keyword lines with our comprehensive set
+                if not has_inserted_kw:
+                    new_lines.append(f"Keywords={kw_string}\n")
+                    new_lines.append(f"Keywords[ru]={kw_string}\n")
+                    has_inserted_kw = True
+                continue
+
+        new_lines.append(line)
+
+    if in_main and not has_inserted_kw:
+        new_lines.append(f"Keywords={kw_string}\n")
+        new_lines.append(f"Keywords[ru]={kw_string}\n")
+
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+    try:
+        with open(dst_path, encoding='utf-8') as f:
+            if f.read() == "".join(new_lines):
+                return True
+    except Exception:
+        pass
+    tmp_path = dst_path + ".tmp"
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        f.writelines(new_lines)
+    owner = None
+    try:
+        st = os.stat(dst_path)
+        owner = (st.st_uid, st.st_gid)
+    except FileNotFoundError:
+        pass
+    os.replace(tmp_path, dst_path)
+    os.chmod(dst_path, 0o644)
+    if owner:
+        try:
+            os.chown(dst_path, *owner)  # не отдаём пользовательские файлы root-у при запуске через sudo
+        except Exception:
+            pass
+    return True
+
+def index_all():
+    os.makedirs(TARGET_DIR, exist_ok=True)
+    count = 0
+
+    # 1. Process all system desktop files
+    for src_dir in SOURCE_DIRS:
+        if not os.path.isdir(src_dir):
+            continue
+        for fpath in glob.glob(os.path.join(src_dir, "*.desktop")):
+            fname = os.path.basename(fpath)
+            dst_path = os.path.join(TARGET_DIR, fname)
+            if process_desktop_file(fpath, dst_path):
+                count += 1
+
+    # 2. Also process any user-specific desktop files in ~/.local/share/applications/ in-place
+    for USER_DIR in USER_DIRS:
+        for fpath in glob.glob(os.path.join(USER_DIR, "*.desktop")):
+            # Process in-place if readable and writable
+            if os.path.isfile(fpath) and not os.path.islink(fpath):
+                # Файлы обрабатываются на месте, их Keywords уже сгенерированы нами —
+                # пересобираем только из имён, иначе старый мусор сохранится навсегда
+                process_desktop_file(fpath, fpath, use_existing_keywords=False)
+
+    # 3. Clean up deleted applications from TARGET_DIR
+    for dst_file in glob.glob(os.path.join(TARGET_DIR, "*.desktop")):
+        fname = os.path.basename(dst_file)
+        src_exists = any(os.path.isfile(os.path.join(s, fname)) for s in SOURCE_DIRS)
+        if not src_exists:
+            try:
+                os.remove(dst_file)
+            except Exception:
+                pass
+
+    # 4. Update desktop databases
+    os.system(f"update-desktop-database {TARGET_DIR} >/dev/null 2>&1")
+    for USER_DIR in USER_DIRS:
+        os.system(f"update-desktop-database {USER_DIR} >/dev/null 2>&1")
+
+    print(f"inerium-desktop-indexer: Successfully indexed {count} applications.")
+
+if __name__ == "__main__":
+    index_all()

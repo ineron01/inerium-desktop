@@ -4,7 +4,7 @@ configuration {
     me-accept-entry: "MousePrimary";
 }
 
-@theme "~/.config/rofi/kanagawa.rasi"
+@theme "~/.config/rofi/inerium.rasi"
 
 /* Компактные меню-апплеты (Wi-Fi, Bluetooth, звук, сессия) */
 window { width: 420px; }
