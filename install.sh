@@ -265,15 +265,6 @@ run_tui_prompts() {
     else
         FETCH_MODEL=0
     fi
-
-    local ws_default="${WORKSPACES_PER_MON:-3}"
-    local ws_input
-    ws_input="$(gum input --header "Workspaces per monitor (1-9):" --value "$ws_default" --placeholder "3")"
-    if [[ "$ws_input" =~ ^[1-9]$ ]]; then
-        WORKSPACES_PER_MON="$ws_input"
-    else
-        WORKSPACES_PER_MON="3"
-    fi
 }
 
 if use_tui; then
