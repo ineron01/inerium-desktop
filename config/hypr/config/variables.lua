@@ -9,23 +9,19 @@ CALCULATOR   = "gnome-calculator"
 local function detect_drm_monitors()
     local internal = nil
     local external = nil
-    local connectors = { "eDP-2", "eDP-1", "LVDS-1", "HDMI-A-1", "HDMI-A-2", "DP-1", "DP-2", "DP-3" }
-    for card = 0, 3 do
-        for _, conn in ipairs(connectors) do
-            local path = string.format("/sys/class/drm/card%d-%s/status", card, conn)
-            local f = io.open(path, "r")
-            if f then
-                local status = f:read("*l")
-                f:close()
-                if status == "connected" then
-                    if conn:match("^eDP") or conn:match("^LVDS") then
-                        if not internal then internal = conn end
-                    else
-                        if not external then external = conn end
-                    end
+    local p = io.popen("grep -l '^connected$' /sys/class/drm/card*-*/status 2>/dev/null")
+    if p then
+        for line in p:lines() do
+            local conn = line:match("/sys/class/drm/card%d+%-(.+)/status$")
+            if conn then
+                if conn:match("^eDP") or conn:match("^LVDS") or conn:match("^DSI") then
+                    if not internal then internal = conn end
+                else
+                    if not external then external = conn end
                 end
             end
         end
+        p:close()
     end
     return internal, external
 end
@@ -35,7 +31,7 @@ local internal_mon, external_mon = detect_drm_monitors()
 LAPTOP_MONITOR  = internal_mon or external_mon or "eDP-1"
 MONITOR1        = LAPTOP_MONITOR
 MONITOR2        = external_mon or MONITOR1
-MONITOR3        = (LAPTOP_MONITOR == "eDP-2") and "eDP-1" or "eDP-2"
+MONITOR3        = external_mon or MONITOR2
 PRIMARY_MONITOR = external_mon or MONITOR1
 
 -- Workspaces

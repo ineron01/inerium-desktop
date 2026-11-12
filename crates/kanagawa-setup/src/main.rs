@@ -1,3 +1,4 @@
+mod i18n;
 mod model;
 mod system;
 mod theme;
@@ -58,10 +59,10 @@ fn main() -> glib::ExitCode {
 
     if reset {
         if let Err(e) = reset_all_markers(&paths) {
-            eprintln!("Ошибка сброса маркеров: {e}");
+            eprintln!("Failed to reset setup markers: {e}");
             return glib::ExitCode::FAILURE;
         }
-        println!("Маркеры первичной настройки сброшены.");
+        println!("First-login setup markers have been reset.");
         if !autostart {
             return glib::ExitCode::SUCCESS;
         }

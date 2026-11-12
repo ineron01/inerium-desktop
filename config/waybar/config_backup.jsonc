@@ -55,9 +55,7 @@
         "on-scroll-up": "hyprctl dispatch workspace m+1",
         "on-scroll-down": "hyprctl dispatch workspace m-1",
         "persistent-workspaces": {
-            "eDP-1": [1, 2, 3],
-            "eDP-2": [1, 2, 3],
-            "HDMI-A-1": [4, 5, 6]
+            "*": [1, 2, 3]
         }
     },
 

@@ -95,10 +95,10 @@ def main():
         subprocess.run(["hyprctl", "hyprpaper", "wallpaper", f"{target_mon},{wall_path}"], capture_output=True)
         mon_map[target_mon] = wall_path
 
-        # Mirror eDP-2 <-> eDP-1 for laptop display resilience
-        if target_mon == "eDP-2":
+        # Mirror eDP-2 <-> eDP-1 only if the alternate connector is actually present
+        if target_mon == "eDP-2" and "eDP-1" in connected:
             mon_map["eDP-1"] = wall_path
-        elif target_mon == "eDP-1":
+        elif target_mon == "eDP-1" and "eDP-2" in connected:
             mon_map["eDP-2"] = wall_path
 
         if not fallback:

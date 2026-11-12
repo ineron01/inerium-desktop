@@ -262,7 +262,7 @@ where
         s_btn_c.set_label("󰑐 Поиск устройств...");
 
         thread::spawn(move || {
-            let _ = Command::new("bluetoothctl").args(["--timeout", "4", "scan", "on"]).output();
+            let _ = Command::new("timeout").args(["4", "bluetoothctl", "scan", "on"]).output();
             let fresh = query_devices();
             glib::MainContext::default().invoke(move || {
                 BT_CALLBACK.with(|cb| {

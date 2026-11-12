@@ -86,7 +86,7 @@ pub fn save_and_reload_monitors(
 pub fn reset_monitors_to_auto(paths: &SetupPaths) -> Result<(), String> {
     if is_managed_monitors_overlay(paths) {
         return Err(
-            "monitors_local.lua управляется оверлеем (симлинк / правила воркспейсов); сброс из GUI отключён"
+            "monitors_local.lua is managed by an overlay (symlink / workspace rules); GUI reset is disabled"
                 .to_string(),
         );
     }
@@ -215,9 +215,87 @@ pub fn evaluate_steps(paths: &SetupPaths) -> Vec<FirstLoginStep> {
 }
 
 pub fn should_open_autostart(paths: &SetupPaths) -> (bool, bool) {
-    let wizard_done = paths.setup_done_path().exists();
-    let steps = evaluate_steps(paths);
-    let has_pending_steps = steps.iter().any(|s| s.status == StepStatus::Pending);
-    let open = !wizard_done || has_pending_steps;
-    (open, wizard_done && has_pending_steps)
+    if paths.setup_done_path().exists() {
+        return (false, false);
+    }
+    (true, false)
+}
+
+pub fn remove_onboarding_files(exe_path: Option<&Path>, desktop_path: &Path) -> Result<(), String> {
+    if let Some(exe) = exe_path
+        && fs::symlink_metadata(exe).is_ok()
+    {
+        fs::remove_file(exe).map_err(|e| format!("Failed removing {}: {e}", exe.display()))?;
+    }
+    if fs::symlink_metadata(desktop_path).is_ok() {
+        fs::remove_file(desktop_path)
+            .map_err(|e| format!("Failed removing {}: {e}", desktop_path.display()))?;
+    }
+    Ok(())
+}
+
+pub fn self_remove_onboarding(paths: &SetupPaths) -> Result<(), String> {
+    let exe = std::env::current_exe().ok();
+    let desktop = paths.setup_desktop_entry_path();
+    remove_onboarding_files(exe.as_deref(), &desktop)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::mark_setup_done;
+
+    #[test]
+    fn autostart_opens_only_before_setup_done() {
+        let base = std::env::temp_dir().join(format!("kanagawa_autostart_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let paths = SetupPaths {
+            home: base.clone(),
+            config_home: base.join(".config"),
+            state_home: base.join(".local/state"),
+        };
+
+        // Even with a pending step in first-login.d, once setup.done exists, autostart stays closed
+        let step_dir = paths.first_login_steps_dir();
+        std::fs::create_dir_all(&step_dir).unwrap();
+        let step = step_dir.join("99-test-step");
+        std::fs::write(&step, "#!/bin/sh\nexit 1\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&step, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        assert_eq!(should_open_autostart(&paths), (true, false));
+
+        mark_setup_done(&paths).unwrap();
+        assert_eq!(should_open_autostart(&paths), (false, false));
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn remove_onboarding_files_removes_binary_and_desktop_safely() {
+        let base = std::env::temp_dir().join(format!("kanagawa_self_rm_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let bin_dir = base.join(".local/bin");
+        let apps_dir = base.join(".local/share/applications");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+        std::fs::create_dir_all(&apps_dir).unwrap();
+
+        let fake_exe = bin_dir.join("kanagawa-setup");
+        let fake_desktop = apps_dir.join("kanagawa-setup.desktop");
+        std::fs::write(&fake_exe, b"binary").unwrap();
+        std::fs::write(&fake_desktop, b"[Desktop Entry]\n").unwrap();
+
+        remove_onboarding_files(Some(&fake_exe), &fake_desktop).unwrap();
+        assert!(!fake_exe.exists());
+        assert!(!fake_desktop.exists());
+
+        // Missing files / None exe_path are non-fatal
+        remove_onboarding_files(None, &fake_desktop).unwrap();
+        remove_onboarding_files(Some(&fake_exe), &fake_desktop).unwrap();
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
 }

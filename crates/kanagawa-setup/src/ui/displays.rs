@@ -7,6 +7,7 @@ use gtk4::{
     StringList, Switch,
 };
 
+use crate::i18n::{Lang, tr};
 use crate::model::{
     HyprMonitor, LayoutPreset, MonitorConfig, SetupPaths, apply_layout_preset, format_scale,
     merge_monitors, parse_monitors_lua, read_workspaces_count, write_workspaces_count,
@@ -27,7 +28,7 @@ struct MonitorRowWidgets {
     vrr_switch: Switch,
 }
 
-pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
+pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback, lang: Lang) -> Box {
     let root = Box::new(Orientation::Vertical, 12);
 
     // 1. Workspaces per monitor card
@@ -38,14 +39,20 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
     let ws_title_box = Box::new(Orientation::Vertical, 2);
     ws_title_box.set_hexpand(true);
 
-    let ws_title = Label::new(Some("Рабочие столы на монитор"));
+    let ws_title = Label::new(Some(tr(
+        lang,
+        "Workspaces per monitor",
+        "Рабочие столы на монитор",
+    )));
     ws_title.add_css_class("card-title");
     ws_title.set_xalign(0.0);
     ws_title_box.append(&ws_title);
 
-    let ws_sub = Label::new(Some(
+    let ws_sub = Label::new(Some(tr(
+        lang,
+        "Saved to ~/.config/hypr/config/workspaces_count and applied immediately",
         "Записывается в ~/.config/hypr/config/workspaces_count и сразу применяется",
-    ));
+    )));
     ws_sub.add_css_class("card-muted");
     ws_sub.set_xalign(0.0);
     ws_title_box.append(&ws_sub);
@@ -91,8 +98,14 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
                 }
             }
             match hyprctl_reload() {
-                Ok(()) => status_cb.ok(&format!("Воркспейсы: {n} на монитор (применено)")),
-                Err(e) => status_cb.warn(&format!("Сохранено ({n}), но hyprctl reload: {e}")),
+                Ok(()) => status_cb.ok(&match lang {
+                    Lang::En => format!("Workspaces: {n} per monitor (applied)"),
+                    Lang::Ru => format!("Воркспейсы: {n} на монитор (применено)"),
+                }),
+                Err(e) => status_cb.warn(&match lang {
+                    Lang::En => format!("Saved ({n}), but hyprctl reload: {e}"),
+                    Lang::Ru => format!("Сохранено ({n}), но hyprctl reload: {e}"),
+                }),
             }
         });
     }
@@ -106,16 +119,28 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
     let mon_title_box = Box::new(Orientation::Vertical, 2);
     mon_title_box.set_hexpand(true);
 
-    let mon_title = Label::new(Some("Подключённые мониторы"));
+    let mon_title = Label::new(Some(tr(
+        lang,
+        "Connected displays",
+        "Подключённые мониторы",
+    )));
     mon_title.add_css_class("card-title");
     mon_title.set_xalign(0.0);
     mon_title_box.append(&mon_title);
 
     let managed_overlay = is_managed_monitors_overlay(&paths);
     let mon_sub_text = if managed_overlay {
-        "Управляется оверлеем (monitors_local.lua — симлинк / правила воркспейсов), перезапись отключена"
+        tr(
+            lang,
+            "Managed by overlay (monitors_local.lua is a symlink / workspace rules), overwriting disabled",
+            "Управляется оверлеем (monitors_local.lua — симлинк / правила воркспейсов), перезапись отключена",
+        )
     } else {
-        "Сохраняется в ~/.config/hypr/config/monitors_local.lua с проверкой luac -p"
+        tr(
+            lang,
+            "Saved to ~/.config/hypr/config/monitors_local.lua with luac -p validation",
+            "Сохраняется в ~/.config/hypr/config/monitors_local.lua с проверкой luac -p",
+        )
     };
     let mon_sub = Label::new(Some(mon_sub_text));
     mon_sub.add_css_class("card-muted");
@@ -123,21 +148,21 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
     mon_title_box.append(&mon_sub);
     mon_head.append(&mon_title_box);
 
-    let refresh_btn = Button::with_label("󰑐 Обновить");
+    let refresh_btn = Button::with_label(tr(lang, "󰑐 Refresh", "󰑐 Обновить"));
     refresh_btn.add_css_class("btn-secondary");
     mon_head.append(&refresh_btn);
     mon_card.append(&mon_head);
 
     // Layout preset bar
     let preset_row = Box::new(Orientation::Horizontal, 6);
-    let preset_lbl = Label::new(Some("Расположение:"));
+    let preset_lbl = Label::new(Some(tr(lang, "Layout:", "Расположение:")));
     preset_lbl.add_css_class("card-meta");
     preset_row.append(&preset_lbl);
 
-    let btn_auto = Button::with_label("Авто");
-    let btn_htop = Button::with_label("Рядом (верх)");
-    let btn_hbot = Button::with_label("Рядом (низ)");
-    let btn_vert = Button::with_label("Вертикально");
+    let btn_auto = Button::with_label(tr(lang, "Auto", "Авто"));
+    let btn_htop = Button::with_label(tr(lang, "Side by side (top)", "Рядом (верх)"));
+    let btn_hbot = Button::with_label(tr(lang, "Side by side (bottom)", "Рядом (низ)"));
+    let btn_vert = Button::with_label(tr(lang, "Vertical", "Вертикально"));
     for b in [&btn_auto, &btn_htop, &btn_hbot, &btn_vert] {
         b.add_css_class("btn-secondary");
         preset_row.append(b);
@@ -161,7 +186,11 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
 
     // Bottom action row for monitors
     let action_row = Box::new(Orientation::Horizontal, 8);
-    let reset_btn = Button::with_label("Сбросить на автоопределение");
+    let reset_btn = Button::with_label(tr(
+        lang,
+        "Reset to auto-detect",
+        "Сбросить на автоопределение",
+    ));
     reset_btn.add_css_class("btn-danger");
     if managed_overlay {
         reset_btn.set_sensitive(false);
@@ -172,7 +201,7 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
     spacer.set_hexpand(true);
     action_row.append(&spacer);
 
-    let save_btn = Button::with_label("Сохранить и применить");
+    let save_btn = Button::with_label(tr(lang, "Save & Apply", "Сохранить и применить"));
     save_btn.add_css_class("btn-primary");
     if managed_overlay {
         save_btn.set_sensitive(false);
@@ -222,7 +251,11 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
                 preview_box.remove(&child);
             }
             if configs.is_empty() {
-                let lbl = Label::new(Some("Мониторы не обнаружены (нет ответа hyprctl)"));
+                let lbl = Label::new(Some(tr(
+                    lang,
+                    "No displays detected (no response from hyprctl)",
+                    "Мониторы не обнаружены (нет ответа hyprctl)",
+                )));
                 lbl.add_css_class("card-muted");
                 preview_box.append(&lbl);
                 return;
@@ -287,9 +320,11 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
             let configs = merge_monitors(&live, &saved);
 
             if configs.is_empty() {
-                let empty = Label::new(Some(
+                let empty = Label::new(Some(tr(
+                    lang,
+                    "Could not get display list from hyprctl monitors -j",
                     "Не удалось получить список мониторов от hyprctl monitors -j",
-                ));
+                )));
                 empty.add_css_class("card-muted");
                 empty.set_margin_top(18);
                 list_box.append(&empty);
@@ -321,7 +356,7 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
                     hdr.append(&desc);
 
                     if lm.focused {
-                        let pill = Label::new(Some("Активный"));
+                        let pill = Label::new(Some(tr(lang, "Active", "Активный")));
                         pill.add_css_class("pill");
                         pill.add_css_class("pill-ok");
                         hdr.append(&pill);
@@ -355,7 +390,7 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
                     .unwrap_or(0);
                 mode_dd.set_selected(mode_idx as u32);
 
-                let mode_box = labeled_field("Режим / Гц", &mode_dd);
+                let mode_box = labeled_field(tr(lang, "Mode / Hz", "Режим / Гц"), &mode_dd);
                 mode_box.set_hexpand(true);
                 controls.append(&mode_box);
 
@@ -378,14 +413,14 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
                     .position(|&s| (s - cfg.scale).abs() < 0.01)
                     .unwrap_or(0);
                 scale_dd.set_selected(scale_idx as u32);
-                controls.append(&labeled_field("Масштаб", &scale_dd));
+                controls.append(&labeled_field(tr(lang, "Scale", "Масштаб"), &scale_dd));
 
                 // Position entry
                 let pos_entry = Entry::new();
                 pos_entry.add_css_class("setup-entry");
                 pos_entry.set_width_chars(10);
                 pos_entry.set_text(&cfg.position);
-                controls.append(&labeled_field("Позиция (XxY)", &pos_entry));
+                controls.append(&labeled_field(tr(lang, "Position (XxY)", "Позиция (XxY)"), &pos_entry));
 
                 // VRR switch
                 let vrr_switch = Switch::new();
@@ -454,7 +489,7 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
         let status_cb = status_cb.clone();
         refresh_btn.connect_clicked(move |_| {
             populate();
-            status_cb.ok("Список мониторов обновлён");
+            status_cb.ok(tr(lang, "Display list refreshed", "Список мониторов обновлён"));
         });
     }
 
@@ -467,12 +502,16 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
         save_btn.connect_clicked(move |_| {
             let configs = read_current_configs();
             if configs.is_empty() {
-                status_cb.warn("Нет мониторов для сохранения");
+                status_cb.warn(tr(lang, "No displays to save", "Нет мониторов для сохранения"));
                 return;
             }
             match save_and_reload_monitors(&paths, &configs) {
                 Ok(()) => {
-                    status_cb.ok("monitors_local.lua проверен (luac -p) и применён");
+                    status_cb.ok(tr(
+                        lang,
+                        "monitors_local.lua verified (luac -p) and applied",
+                        "monitors_local.lua проверен (luac -p) и применён",
+                    ));
                     populate();
                 }
                 Err(e) => status_cb.error(&e),
@@ -487,7 +526,11 @@ pub fn build_displays_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
         let populate = populate.clone();
         reset_btn.connect_clicked(move |_| match reset_monitors_to_auto(&paths) {
             Ok(()) => {
-                status_cb.ok("Конфиг мониторов сброшен на автоопределение");
+                status_cb.ok(tr(
+                    lang,
+                    "Display config reset to auto-detect",
+                    "Конфиг мониторов сброшен на автоопределение",
+                ));
                 populate();
             }
             Err(e) => status_cb.error(&e),

@@ -29,25 +29,80 @@ fn is_detailed() -> bool {
     hwmon_registry().is_state_active()
 }
 
-fn read_temp() -> Option<i32> {
-    let paths = [
-        "/sys/devices/pci0000:00/0000:00:18.3/hwmon",
-        "/sys/class/hwmon",
-    ];
-    for base in paths {
-        if let Ok(entries) = fs::read_dir(base) {
-            for entry in entries.flatten() {
-                let p = entry.path();
-                let sub = if p.is_dir() { p } else { continue };
-                let tfile = sub.join("temp1_input");
-                if let Ok(content) = fs::read_to_string(&tfile)
-                    && let Ok(val) = content.trim().parse::<i32>() {
-                        return Some(val / 1000);
-                    }
+fn cpu_driver_priority(name: &str) -> Option<usize> {
+    let n = name.trim();
+    if n == "k10temp" {
+        Some(0)
+    } else if n == "zenpower" {
+        Some(1)
+    } else if n == "coretemp" {
+        Some(2)
+    } else if n == "cpu_thermal" || n == "soc_dts" || n.starts_with("soc_dts") || n == "acpitz" {
+        Some(3)
+    } else {
+        None
+    }
+}
+
+fn read_hwmon_dir_temp(dir: &std::path::Path) -> Option<i32> {
+    // Prefer labeled CPU package/die sensors (e.g., "Package id 0", "Tctl", "Tdie")
+    for idx in 1..=16 {
+        let label_path = dir.join(format!("temp{idx}_label"));
+        if let Ok(label) = fs::read_to_string(&label_path) {
+            let l = label.trim();
+            if l.eq_ignore_ascii_case("Package id 0")
+                || l.eq_ignore_ascii_case("Tctl")
+                || l.eq_ignore_ascii_case("Tdie")
+            {
+                let input_path = dir.join(format!("temp{idx}_input"));
+                if let Ok(content) = fs::read_to_string(&input_path)
+                    && let Ok(val) = content.trim().parse::<i32>()
+                {
+                    return Some(val / 1000);
+                }
             }
         }
     }
+
+    // Fallback to temp1_input (or first available tempN_input) within this sensor
+    for idx in 1..=16 {
+        let input_path = dir.join(format!("temp{idx}_input"));
+        if let Ok(content) = fs::read_to_string(&input_path)
+            && let Ok(val) = content.trim().parse::<i32>()
+        {
+            return Some(val / 1000);
+        }
+    }
     None
+}
+
+fn read_temp_from_base(base: &std::path::Path) -> Option<i32> {
+    let entries = fs::read_dir(base).ok()?;
+    let mut best: Option<(usize, i32)> = None;
+    let mut fallback: Option<i32> = None;
+
+    for entry in entries.flatten() {
+        let p = entry.path();
+        if !p.is_dir() {
+            continue;
+        }
+        let name = fs::read_to_string(p.join("name")).unwrap_or_default();
+        if let Some(prio) = cpu_driver_priority(&name) {
+            if let Some(temp) = read_hwmon_dir_temp(&p)
+                && best.is_none_or(|(best_prio, _)| prio < best_prio)
+            {
+                best = Some((prio, temp));
+            }
+        } else if fallback.is_none() {
+            fallback = read_hwmon_dir_temp(&p);
+        }
+    }
+
+    best.map(|(_, t)| t).or(fallback)
+}
+
+fn read_temp() -> Option<i32> {
+    read_temp_from_base(std::path::Path::new("/sys/class/hwmon"))
 }
 
 fn parse_proc_stat() -> (u64, u64) {
@@ -245,5 +300,59 @@ fn main() {
         }
 
         self_pipe.wait_event(2500);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cpu_hwmon_prioritizes_cpu_over_nvme_and_reads_package_label() {
+        let base = std::env::temp_dir().join(format!("kanagawa_hwmon_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+
+        // hwmon0: nvme (should be ignored when coretemp/k10temp exists)
+        let hw0 = base.join("hwmon0");
+        fs::create_dir_all(&hw0).unwrap();
+        fs::write(hw0.join("name"), "nvme\n").unwrap();
+        fs::write(hw0.join("temp1_input"), "39000\n").unwrap();
+
+        // hwmon1: acpitz (lower priority than coretemp)
+        let hw1 = base.join("hwmon1");
+        fs::create_dir_all(&hw1).unwrap();
+        fs::write(hw1.join("name"), "acpitz\n").unwrap();
+        fs::write(hw1.join("temp1_input"), "41000\n").unwrap();
+
+        // hwmon2: coretemp with Package id 0 on temp2
+        let hw2 = base.join("hwmon2");
+        fs::create_dir_all(&hw2).unwrap();
+        fs::write(hw2.join("name"), "coretemp\n").unwrap();
+        fs::write(hw2.join("temp1_label"), "Core 0\n").unwrap();
+        fs::write(hw2.join("temp1_input"), "48000\n").unwrap();
+        fs::write(hw2.join("temp2_label"), "Package id 0\n").unwrap();
+        fs::write(hw2.join("temp2_input"), "56000\n").unwrap();
+
+        assert_eq!(read_temp_from_base(&base), Some(56));
+
+        // Add k10temp (highest priority)
+        let hw3 = base.join("hwmon3");
+        fs::create_dir_all(&hw3).unwrap();
+        fs::write(hw3.join("name"), "k10temp\n").unwrap();
+        fs::write(hw3.join("temp1_label"), "Tctl\n").unwrap();
+        fs::write(hw3.join("temp1_input"), "62000\n").unwrap();
+
+        assert_eq!(read_temp_from_base(&base), Some(62));
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn cpu_hwmon_empty_dir_returns_none() {
+        let base = std::env::temp_dir().join(format!("kanagawa_hwmon_empty_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        assert_eq!(read_temp_from_base(&base), None);
+        let _ = fs::remove_dir_all(&base);
     }
 }

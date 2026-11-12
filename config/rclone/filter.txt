@@ -1,0 +1,23 @@
+# === Obsidian: исключаем динамические и конфликтные файлы сессий ===
+# workspace*.json перезаписывается при каждом клике и переключении вкладок
+- **/.obsidian/workspace*.json
+- **/.obsidian/workspace-mobile*.json
+- **/.obsidian/cache/**
+- **/.trash/**
+- **/.obsidian/.trash/**
+
+# === Системный мусор и метаданные рабочего окружения (KDE/GNOME/macOS) ===
+- **/.directory
+- /.directory
+- **/.Trash-*/**
+- /.Trash-*/**
+- **/.DS_Store
+- /.DS_Store
+- **/.fuse_hidden*
+- /.fuse_hidden*
+- **/.~lock.*
+- /.~lock.*
+- **/*.tmp
+- /*.tmp
+- **/*.swp
+- /*.swp

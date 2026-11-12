@@ -8,6 +8,7 @@ use gtk4::{
     ScrolledWindow, StringList, Switch, glib,
 };
 
+use crate::i18n::{Lang, tr};
 use crate::model::{
     HyprProfile, IdleConfig, InputOverrides, SetupPaths, parse_active_wallpaper,
     parse_hypridle_conf, parse_inputs_lua, read_profile, scan_wallpapers, write_profile,
@@ -18,20 +19,20 @@ use crate::system::{
 use crate::ui::StatusCallback;
 
 const KB_TOGGLE_OPTIONS: &[(&str, &str)] = &[
-    ("grp:alt_shift_toggle", "Alt + Shift"),
     ("grp:win_space_toggle", "Super + Space"),
-    ("grp:caps_toggle", "Caps Lock"),
+    ("grp:alt_shift_toggle", "Alt + Shift"),
     ("grp:ctrl_shift_toggle", "Ctrl + Shift"),
+    ("grp:caps_toggle", "Caps Lock"),
 ];
 
-const IDLE_PRESETS: &[(&str, u32, u32, u32)] = &[
-    ("Быстро (2 / 4 / 6 мин)", 120, 240, 360),
-    ("Стандарт (4 / 7 / 10 мин)", 240, 420, 600),
-    ("Долго (10 / 15 / 20 мин)", 600, 900, 1200),
-    ("Презентация (15 / 30 / 45 мин)", 900, 1800, 2700),
+const IDLE_PRESETS: &[(&str, &str, u32, u32, u32)] = &[
+    ("Fast (2 / 4 / 6 min)", "Быстро (2 / 4 / 6 мин)", 120, 240, 360),
+    ("Standard (4 / 7 / 10 min)", "Стандарт (4 / 7 / 10 мин)", 240, 420, 600),
+    ("Long (10 / 15 / 20 min)", "Долго (10 / 15 / 20 мин)", 600, 900, 1200),
+    ("Presentation (15 / 30 / 45 min)", "Презентация (15 / 30 / 45 мин)", 900, 1800, 2700),
 ];
 
-pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box {
+pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback, lang: Lang) -> Box {
     let outer = Box::new(Orientation::Vertical, 10);
 
     let scroll = ScrolledWindow::builder()
@@ -49,14 +50,20 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
 
     let prof_info = Box::new(Orientation::Vertical, 2);
     prof_info.set_hexpand(true);
-    let prof_title = Label::new(Some("Профиль Hyprland по умолчанию"));
+    let prof_title = Label::new(Some(tr(
+        lang,
+        "Default Hyprland profile",
+        "Профиль Hyprland по умолчанию",
+    )));
     prof_title.add_css_class("card-title");
     prof_title.set_xalign(0.0);
     prof_info.append(&prof_title);
 
-    let prof_sub = Label::new(Some(
+    let prof_sub = Label::new(Some(tr(
+        lang,
+        "Stored in ~/.config/hypr/profile (gitignored)",
         "Хранится в ~/.config/hypr/profile (не отслеживается Git)",
-    ));
+    )));
     prof_sub.add_css_class("card-muted");
     prof_sub.set_xalign(0.0);
     prof_info.append(&prof_sub);
@@ -67,8 +74,8 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     prof_seg.add_css_class("seg-group");
     prof_seg.set_valign(Align::Center);
 
-    let btn_waybar = Button::with_label("Waybar (основной)");
-    let btn_backup = Button::with_label("Backup (резервный)");
+    let btn_waybar = Button::with_label(tr(lang, "Waybar (main)", "Waybar (основной)"));
+    let btn_backup = Button::with_label(tr(lang, "Backup (fallback)", "Backup (резервный)"));
     btn_waybar.add_css_class("seg-btn");
     btn_backup.add_css_class("seg-btn");
     if *current_prof.borrow() == HyprProfile::Waybar {
@@ -103,10 +110,16 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
                 btn_b.add_css_class("active");
                 btn_w.remove_css_class("active");
             }
-            status_cb.ok(&format!(
-                "Профиль '{}' сохранён (применится при следующем входе)",
-                target_prof.as_str()
-            ));
+            status_cb.ok(&match lang {
+                Lang::En => format!(
+                    "Profile '{}' saved (applies on next login)",
+                    target_prof.as_str()
+                ),
+                Lang::Ru => format!(
+                    "Профиль '{}' сохранён (применится при следующем входе)",
+                    target_prof.as_str()
+                ),
+            });
         });
     }
 
@@ -117,14 +130,20 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     let wall_head = Box::new(Orientation::Horizontal, 8);
     let wall_info = Box::new(Orientation::Vertical, 2);
     wall_info.set_hexpand(true);
-    let wall_title = Label::new(Some("Быстрый выбор обоев"));
+    let wall_title = Label::new(Some(tr(
+        lang,
+        "Quick wallpaper picker",
+        "Быстрый выбор обоев",
+    )));
     wall_title.add_css_class("card-title");
     wall_title.set_xalign(0.0);
     wall_info.append(&wall_title);
 
-    let wall_sub = Label::new(Some(
+    let wall_sub = Label::new(Some(tr(
+        lang,
+        "Sources: ~/Pictures/Wallpapers & ~/Обои (applied via set-wallpaper)",
         "Источники: ~/Pictures/Wallpapers и ~/Обои (применяется через set-wallpaper)",
-    ));
+    )));
     wall_sub.add_css_class("card-muted");
     wall_sub.set_xalign(0.0);
     wall_info.append(&wall_sub);
@@ -147,7 +166,11 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     let wall_buttons: Rc<RefCell<Vec<(PathBuf, Button)>>> = Rc::new(RefCell::new(Vec::new()));
 
     if wallpapers.is_empty() {
-        let empty = Label::new(Some("Изображения не найдены в ~/Pictures/Wallpapers или ~/Обои"));
+        let empty = Label::new(Some(tr(
+            lang,
+            "No images found in ~/Pictures/Wallpapers or ~/Обои",
+            "Изображения не найдены в ~/Pictures/Wallpapers или ~/Обои",
+        )));
         empty.add_css_class("card-muted");
         empty.set_margin_top(30);
         wall_strip.append(&empty);
@@ -196,18 +219,21 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
             }
             let wpath_bg = wpath.clone();
             let status_cb = status_cb.clone();
-            status_cb.warn("Применение обоев...");
+            status_cb.warn(tr(lang, "Applying wallpaper...", "Применение обоев..."));
             glib::MainContext::default().spawn_local(async move {
                 let fname = wpath_bg
                     .file_name()
                     .and_then(|n| n.to_str())
-                    .unwrap_or("обои")
+                    .unwrap_or("wallpaper")
                     .to_string();
                 let res = gio::spawn_blocking(move || apply_wallpaper(&wpath_bg))
                     .await
                     .unwrap_or_else(|e| Err(format!("Task panicked: {e:?}")));
                 match res {
-                    Ok(()) => status_cb.ok(&format!("Обои '{fname}' применены")),
+                    Ok(()) => status_cb.ok(&match lang {
+                        Lang::En => format!("Wallpaper '{fname}' applied"),
+                        Lang::Ru => format!("Обои '{fname}' применены"),
+                    }),
                     Err(e) => status_cb.error(&e),
                 }
             });
@@ -222,14 +248,20 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     let ovr_card = Box::new(Orientation::Vertical, 10);
     ovr_card.add_css_class("setup-card");
 
-    let ovr_title = Label::new(Some("Клавиатура, тачпад и автоблокировка (локальные overrides)"));
+    let ovr_title = Label::new(Some(tr(
+        lang,
+        "Keyboard, touchpad & autolock (local overrides)",
+        "Клавиатура, тачпад и автоблокировка (локальные overrides)",
+    )));
     ovr_title.add_css_class("card-title");
     ovr_title.set_xalign(0.0);
     ovr_card.append(&ovr_title);
 
-    let ovr_sub = Label::new(Some(
+    let ovr_sub = Label::new(Some(tr(
+        lang,
+        "Saved to inputs_local.lua & hypridle_local.conf (gitignored)",
         "Сохраняется в inputs_local.lua и hypridle_local.conf, не загрязняя Git",
-    ));
+    )));
     ovr_sub.add_css_class("card-muted");
     ovr_sub.set_xalign(0.0);
     ovr_card.append(&ovr_sub);
@@ -245,7 +277,11 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     let kb_row = Box::new(Orientation::Horizontal, 10);
     let kb_layout_box = Box::new(Orientation::Vertical, 4);
     kb_layout_box.set_hexpand(true);
-    let kb_lbl = Label::new(Some("Раскладки (kb_layout)"));
+    let kb_lbl = Label::new(Some(tr(
+        lang,
+        "Layouts (kb_layout)",
+        "Раскладки (kb_layout)",
+    )));
     kb_lbl.add_css_class("card-muted");
     kb_lbl.set_xalign(0.0);
     kb_layout_box.append(&kb_lbl);
@@ -269,7 +305,11 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
 
     // Layout switch shortcut
     let opt_box = Box::new(Orientation::Vertical, 4);
-    let opt_lbl = Label::new(Some("Переключение раскладки"));
+    let opt_lbl = Label::new(Some(tr(
+        lang,
+        "Layout switch shortcut",
+        "Переключение раскладки",
+    )));
     opt_lbl.add_css_class("card-muted");
     opt_lbl.set_xalign(0.0);
     opt_box.append(&opt_lbl);
@@ -290,11 +330,19 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     let tp_row = Box::new(Orientation::Horizontal, 16);
     tp_row.add_css_class("setup-subcard");
 
-    let sw_natural = make_switch_row(&tp_row, "Естественная прокрутка", saved_inputs.natural_scroll);
-    let sw_tap = make_switch_row(&tp_row, "Тап для клика", saved_inputs.tap_to_click);
+    let sw_natural = make_switch_row(
+        &tp_row,
+        tr(lang, "Natural scroll", "Естественная прокрутка"),
+        saved_inputs.natural_scroll,
+    );
+    let sw_tap = make_switch_row(
+        &tp_row,
+        tr(lang, "Tap to click", "Тап для клика"),
+        saved_inputs.tap_to_click,
+    );
     let sw_dwt = make_switch_row(
         &tp_row,
-        "Блокировать при печати",
+        tr(lang, "Disable while typing", "Блокировать при печати"),
         saved_inputs.disable_while_typing,
     );
     ovr_card.append(&tp_row);
@@ -302,15 +350,22 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     // Autolock row
     let idle_row = Box::new(Orientation::Horizontal, 12);
     idle_row.add_css_class("setup-subcard");
-    let sw_idle = make_switch_row(&idle_row, "Автоблокировка (hypridle)", saved_idle.enabled);
+    let sw_idle = make_switch_row(
+        &idle_row,
+        tr(lang, "Autolock (hypridle)", "Автоблокировка (hypridle)"),
+        saved_idle.enabled,
+    );
 
-    let idle_labels: Vec<&str> = IDLE_PRESETS.iter().map(|(l, _, _, _)| *l).collect();
+    let idle_labels: Vec<&str> = IDLE_PRESETS
+        .iter()
+        .map(|(en, ru, _, _, _)| tr(lang, en, ru))
+        .collect();
     let idle_dd = DropDown::new(Some(StringList::new(&idle_labels)), gtk4::Expression::NONE);
     idle_dd.add_css_class("setup-dropdown");
     idle_dd.set_hexpand(true);
     let idle_idx = IDLE_PRESETS
         .iter()
-        .position(|&(_, d, l, dp)| {
+        .position(|&(_, _, d, l, dp)| {
             d == saved_idle.dim_secs && l == saved_idle.lock_secs && dp == saved_idle.dpms_secs
         })
         .unwrap_or(1);
@@ -329,7 +384,7 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
 
     // Action buttons for overrides
     let ovr_actions = Box::new(Orientation::Horizontal, 8);
-    let ovr_reset_btn = Button::with_label("Сбросить overrides");
+    let ovr_reset_btn = Button::with_label(tr(lang, "Reset overrides", "Сбросить overrides"));
     ovr_reset_btn.add_css_class("btn-danger");
     ovr_actions.append(&ovr_reset_btn);
 
@@ -337,7 +392,7 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
     spacer.set_hexpand(true);
     ovr_actions.append(&spacer);
 
-    let ovr_save_btn = Button::with_label("Сохранить overrides");
+    let ovr_save_btn = Button::with_label(tr(lang, "Save overrides", "Сохранить overrides"));
     ovr_save_btn.add_css_class("btn-primary");
     ovr_actions.append(&ovr_save_btn);
     ovr_card.append(&ovr_actions);
@@ -359,14 +414,18 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
         ovr_save_btn.connect_clicked(move |_| {
             let layout = kb_entry.text().trim().to_string();
             if layout.is_empty() {
-                status_cb.error("Поле kb_layout не может быть пустым");
+                status_cb.error(tr(
+                    lang,
+                    "kb_layout cannot be empty",
+                    "Поле kb_layout не может быть пустым",
+                ));
                 return;
             }
             let opt_idx = opt_dd.selected() as usize;
             let kb_options = KB_TOGGLE_OPTIONS
                 .get(opt_idx)
                 .map(|(v, _)| *v)
-                .unwrap_or("grp:alt_shift_toggle")
+                .unwrap_or("grp:win_space_toggle")
                 .to_string();
 
             let input_cfg = InputOverrides {
@@ -378,7 +437,7 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
             };
 
             let idle_idx = idle_dd.selected() as usize;
-            let &(_, dim_secs, lock_secs, dpms_secs) =
+            let &(_, _, dim_secs, lock_secs, dpms_secs) =
                 IDLE_PRESETS.get(idle_idx).unwrap_or(&IDLE_PRESETS[1]);
             let idle_cfg = IdleConfig {
                 enabled: sw_idle.is_active(),
@@ -392,10 +451,17 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
                 return;
             }
             if let Err(e) = apply_hypridle(&paths, &idle_cfg) {
-                status_cb.warn(&format!("Ввод применён, но hypridle: {e}"));
+                status_cb.warn(&match lang {
+                    Lang::En => format!("Input applied, but hypridle: {e}"),
+                    Lang::Ru => format!("Ввод применён, но hypridle: {e}"),
+                });
                 return;
             }
-            status_cb.ok("Overrides клавиатуры, тачпада и hypridle применены");
+            status_cb.ok(tr(
+                lang,
+                "Keyboard, touchpad & hypridle overrides applied",
+                "Overrides клавиатуры, тачпада и hypridle применены",
+            ));
         });
     }
 
@@ -422,7 +488,11 @@ pub fn build_interface_tab(paths: SetupPaths, status_cb: StatusCallback) -> Box 
                 sw_idle.set_active(true);
                 idle_dd.set_selected(1);
                 idle_dd.set_sensitive(true);
-                status_cb.ok("Локальные overrides сброшены на базовый конфиг");
+                status_cb.ok(tr(
+                    lang,
+                    "Local overrides reset to base config",
+                    "Локальные overrides сброшены на базовый конфиг",
+                ));
             }
             Err(e) => status_cb.error(&e),
         });

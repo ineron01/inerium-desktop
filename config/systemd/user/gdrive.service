@@ -1,0 +1,39 @@
+[Unit]
+Description=Google Drive (rclone mount)
+Documentation=https://rclone.org/commands/rclone_mount/
+# сеть может появиться позже — при сбое systemd перезапустит сервис
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+Environment="GOGC=50"
+# убрать зависшее монтирование после аварии/перезагрузки
+ExecStartPre=/usr/bin/bash -c 'mountpoint -q %h/GoogleDrive && /usr/bin/fusermount3 -uz %h/GoogleDrive || true'
+ExecStartPre=/usr/bin/mkdir -p %h/GoogleDrive
+ExecStart=/usr/bin/rclone mount gdrive: %h/GoogleDrive \
+  --config=%h/.config/rclone/rclone.conf \
+  --filter-from=%h/.config/rclone/filter.txt \
+  --vfs-cache-mode=full \
+  --vfs-cache-max-size=10G \
+  --vfs-cache-max-age=24h \
+  --vfs-cache-poll-interval=1m \
+  --vfs-write-back=3s \
+  --dir-cache-time=30m \
+  --poll-interval=15s \
+  --rc \
+  --rc-no-auth \
+  --rc-addr=127.0.0.1:5572 \
+  --umask=022 \
+  --volname="Google Drive" \
+  --tpslimit=10 \
+  --bind=0.0.0.0 \
+  --contimeout=10s
+ExecStartPost=/usr/bin/bash -c 'sleep 1 && /usr/bin/rclone rc vfs/refresh recursive=true || true'
+# lazy-unmount: не падать с "Device or resource busy", если Dolphin держит файлы
+ExecStop=-/usr/bin/fusermount3 -uz %h/GoogleDrive
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

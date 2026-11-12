@@ -82,7 +82,7 @@ def main():
         notify("Bluetooth", "Bluetooth выключен")
     elif "Поиск новых устройств" in chosen:
         notify("Bluetooth", "Сканирование запущено на 10 сек...", icon="dialog-information")
-        subprocess.run(["bluetoothctl", "--timeout", "10", "scan", "on"], capture_output=True)
+        subprocess.run(["timeout", "10", "bluetoothctl", "scan", "on"], capture_output=True)
         # Открываем снова
         os.execv(sys.argv[0], sys.argv)
     elif chosen in dev_map:

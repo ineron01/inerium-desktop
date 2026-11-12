@@ -84,3 +84,4 @@ ripgrep
 pacman-contrib
 xdg-user-dirs
 xorg-xhost
+rclone
