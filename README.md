@@ -54,6 +54,10 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop
 ./install.sh --bin --with-greeter --fetch-model
 ```
 
+## Documentation & User Guide
+
+- **[Hotkeys, Gestures & Waybar Tutorial (Руководство по горячим клавишам)](docs/keybindings.md)** — Полное иллюстрированное руководство по управлению системой, тайлингу окон, шорткатам, жестам тачпада и скрытым возможностям панели Waybar.
+
 ## First-login setup
 
 `inerium-first-login` runs one-time steps (account sign-ins and similar) from `~/.config/inerium/first-login.d/` in a floating terminal at the first Hyprland login, remembers completed steps, and re-offers postponed ones on the next login. This repository ships no steps; personal overlays drop executables there (each must exit 0 for `--check` once configured). Re-run anytime from Rofi ("Первичная настройка") or with `inerium-first-login --reset`.
