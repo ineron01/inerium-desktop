@@ -21,3 +21,20 @@ config/fish/fish_variables
 *.tar.gz
 *.bak*
 .cache/
+
+# Editors / IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# Python
+__pycache__/
+
+# Nix build outputs
+result
+.direnv/
+
+# Local secrets
+.env
+rclone.conf
