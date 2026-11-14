@@ -4,9 +4,9 @@ use std::process::{Command, Stdio};
 
 use crate::model::{
     FirstLoginStep, HyprMonitor, IdleConfig, InputOverrides, MonitorConfig, SetupPaths, StepStatus,
-    atomic_write, generate_hypridle_conf, generate_hypridle_dropin, generate_inputs_lua,
-    generate_monitors_lua, list_executable_steps, mark_step_done, parse_hypr_monitors_json,
-    step_done_marker,
+    atomic_write, generate_binds_lua, generate_hypridle_conf, generate_hypridle_dropin,
+    generate_inputs_lua, generate_monitors_lua, list_executable_steps, mark_step_done,
+    parse_hypr_monitors_json, step_done_marker,
 };
 
 pub fn query_hypr_monitors() -> Result<Vec<HyprMonitor>, String> {
@@ -126,6 +126,18 @@ pub fn save_inputs_and_reload(paths: &SetupPaths, cfg: &InputOverrides) -> Resul
     let lua = generate_inputs_lua(cfg);
     validate_lua_syntax(&lua)?;
     atomic_write(&paths.inputs_local_path(), &lua)?;
+
+    if cfg.kb_options == "grp:win_space_toggle" {
+        let binds_lua = generate_binds_lua(cfg.launcher_bind.as_deref());
+        validate_lua_syntax(&binds_lua)?;
+        atomic_write(&paths.binds_local_path(), &binds_lua)?;
+    } else {
+        let p = paths.binds_local_path();
+        if fs::symlink_metadata(&p).is_ok() {
+            let _ = fs::remove_file(&p);
+        }
+    }
+
     hyprctl_reload()
 }
 
@@ -170,6 +182,7 @@ pub fn apply_hypridle(paths: &SetupPaths, cfg: &IdleConfig) -> Result<(), String
 pub fn reset_interface_overrides(paths: &SetupPaths) -> Result<(), String> {
     for p in [
         paths.inputs_local_path(),
+        paths.binds_local_path(),
         paths.hypridle_local_conf_path(),
         paths.hypridle_dropin_path(),
     ] {
@@ -221,25 +234,6 @@ pub fn should_open_autostart(paths: &SetupPaths) -> (bool, bool) {
     (true, false)
 }
 
-pub fn remove_onboarding_files(exe_path: Option<&Path>, desktop_path: &Path) -> Result<(), String> {
-    if let Some(exe) = exe_path
-        && fs::symlink_metadata(exe).is_ok()
-    {
-        fs::remove_file(exe).map_err(|e| format!("Failed removing {}: {e}", exe.display()))?;
-    }
-    if fs::symlink_metadata(desktop_path).is_ok() {
-        fs::remove_file(desktop_path)
-            .map_err(|e| format!("Failed removing {}: {e}", desktop_path.display()))?;
-    }
-    Ok(())
-}
-
-pub fn self_remove_onboarding(paths: &SetupPaths) -> Result<(), String> {
-    let exe = std::env::current_exe().ok();
-    let desktop = paths.setup_desktop_entry_path();
-    remove_onboarding_files(exe.as_deref(), &desktop)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -270,31 +264,6 @@ mod tests {
 
         mark_setup_done(&paths).unwrap();
         assert_eq!(should_open_autostart(&paths), (false, false));
-
-        let _ = std::fs::remove_dir_all(&base);
-    }
-
-    #[test]
-    fn remove_onboarding_files_removes_binary_and_desktop_safely() {
-        let base = std::env::temp_dir().join(format!("inerium_self_rm_test_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&base);
-        let bin_dir = base.join(".local/bin");
-        let apps_dir = base.join(".local/share/applications");
-        std::fs::create_dir_all(&bin_dir).unwrap();
-        std::fs::create_dir_all(&apps_dir).unwrap();
-
-        let fake_exe = bin_dir.join("inerium-setup");
-        let fake_desktop = apps_dir.join("inerium-setup.desktop");
-        std::fs::write(&fake_exe, b"binary").unwrap();
-        std::fs::write(&fake_desktop, b"[Desktop Entry]\n").unwrap();
-
-        remove_onboarding_files(Some(&fake_exe), &fake_desktop).unwrap();
-        assert!(!fake_exe.exists());
-        assert!(!fake_desktop.exists());
-
-        // Missing files / None exe_path are non-fatal
-        remove_onboarding_files(None, &fake_desktop).unwrap();
-        remove_onboarding_files(Some(&fake_exe), &fake_desktop).unwrap();
 
         let _ = std::fs::remove_dir_all(&base);
     }

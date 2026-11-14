@@ -248,6 +248,10 @@ pub fn list_available_wallpapers() -> Vec<WallpaperItem> {
     system::list_available_wallpapers()
 }
 
+pub fn inerium_wallpapers_dir() -> std::path::PathBuf {
+    system::inerium_wallpapers_dir()
+}
+
 pub fn set_wallpaper_async(path: String, monitor: Option<String>) {
     system::set_wallpaper_async(path, monitor);
 }

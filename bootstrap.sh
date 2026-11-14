@@ -18,7 +18,7 @@ for arg in "$@"; do
 done
 
 has_gum() {
-    command -v gum >/dev/null 2>&1 && [[ -t 0 && -t 1 ]]
+    command -v gum >/dev/null 2>&1 && [[ -t 1 ]]
 }
 
 print_banner() {
@@ -110,4 +110,8 @@ else
     run_quiet_step "Cloning inerium-desktop repository..." git clone "$REPO_URL" "$TARGET_DIR"
 fi
 
-exec "$TARGET_DIR/install.sh" --with-greeter --fetch-model "$@"
+if [[ ! -t 0 && -t 1 && -r /dev/tty ]]; then
+    exec "$TARGET_DIR/install.sh" --with-greeter --fetch-model "$@" < /dev/tty
+else
+    exec "$TARGET_DIR/install.sh" --with-greeter --fetch-model "$@"
+fi

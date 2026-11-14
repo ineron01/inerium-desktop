@@ -8,6 +8,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
+use inerium_i18n::tr;
 use inerium_tools::format::escape_json;
 use inerium_tools::ipc::SelfPipe;
 
@@ -97,27 +98,40 @@ fn format_status() -> String {
 fn format_tooltip() -> String {
     match get_bt_state() {
         BtState::PoweredOff => {
-            "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
-            <span color='#c4746e' weight='bold'>󰂲 Bluetooth выключен</span>\n\
-            <span color='#727169'>Адаптер отключен</span>\n\
-            <span color='#727169' size='small'>ЛКМ: Устройства · ПКМ: Вкл/выкл · СКМ: Диспетчер Bluetooth</span>\
-            </span>".to_string()
+            format!(
+                "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
+                <span color='#c4746e' weight='bold'>{}</span>\n\
+                <span color='#727169'>{}</span>\n\
+                <span color='#727169' size='small'>{}</span>\
+                </span>",
+                tr("󰂲 Bluetooth is disabled", "󰂲 Bluetooth выключен"),
+                tr("Adapter is turned off", "Адаптер отключен"),
+                tr("LMB: Devices · RMB: Toggle · MMB: Bluetooth Manager", "ЛКМ: Устройства · ПКМ: Вкл/выкл · СКМ: Диспетчер Bluetooth")
+            )
         }
         BtState::PoweredOnNoDev => {
-            "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
-            <span color='#8ba4b0' weight='bold'>󰂯 Bluetooth активен</span>\n\
-            <span color='#727169'>Нет подключенных устройств</span>\n\
-            <span color='#727169' size='small'>ЛКМ: Устройства · ПКМ: Вкл/выкл · СКМ: Диспетчер Bluetooth</span>\
-            </span>".to_string()
+            format!(
+                "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
+                <span color='#8ba4b0' weight='bold'>{}</span>\n\
+                <span color='#727169'>{}</span>\n\
+                <span color='#727169' size='small'>{}</span>\
+                </span>",
+                tr("󰂯 Bluetooth active", "󰂯 Bluetooth активен"),
+                tr("No connected devices", "Нет подключенных устройств"),
+                tr("LMB: Devices · RMB: Toggle · MMB: Bluetooth Manager", "ЛКМ: Устройства · ПКМ: Вкл/выкл · СКМ: Диспетчер Bluetooth")
+            )
         }
         BtState::Connected(name) => {
             format!(
                 "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
-                <span color='#7fb4ca' weight='bold'>󰂱 Подключено</span>\n\
-                <span color='#727169'>Устройство:</span> <span color='#e6e2cc'>{}</span>\n\
-                <span color='#727169' size='small'>ЛКМ: Устройства · ПКМ: Вкл/выкл · СКМ: Диспетчер Bluetooth</span>\
+                <span color='#7fb4ca' weight='bold'>{}</span>\n\
+                <span color='#727169'>{}</span> <span color='#e6e2cc'>{}</span>\n\
+                <span color='#727169' size='small'>{}</span>\
                 </span>",
-                name
+                tr("󰂱 Connected", "󰂱 Подключено"),
+                tr("Device:", "Устройство:"),
+                name,
+                tr("LMB: Devices · RMB: Toggle · MMB: Bluetooth Manager", "ЛКМ: Устройства · ПКМ: Вкл/выкл · СКМ: Диспетчер Bluetooth")
             )
         }
     }
@@ -164,7 +178,9 @@ fn watch_mode(waybar: bool) {
             last_output = current;
         }
 
-        self_pipe.wait_event(3500);
+        if self_pipe.wait_event(3500) {
+            inerium_i18n::Lang::reinit();
+        }
     }
 }
 

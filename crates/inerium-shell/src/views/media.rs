@@ -8,6 +8,7 @@ use std::thread;
 
 use gtk4::prelude::*;
 use gtk4::{Align, Box, Button, GestureClick, Label, Orientation, Picture, ProgressBar};
+use inerium_i18n::tr;
 
 #[derive(Clone, Default)]
 pub struct MediaInfo {
@@ -85,7 +86,7 @@ fn get_player_badge(name: &str) -> (&'static str, String) {
     } else if !name.is_empty() {
         ("󰎆", name.to_string())
     } else {
-        ("󰎆", "Медиа".to_string())
+        ("󰎆", tr("Media", "Медиа").to_string())
     }
 }
 
@@ -117,7 +118,7 @@ where
     back_btn.connect_clicked(move |_| n_cb("control"));
     head.append(&back_btn);
 
-    let player_badge = Label::new(Some("󰎆 Медиаплеер"));
+    let player_badge = Label::new(Some(tr("󰎆 Media Player", "󰎆 Медиаплеер")));
     player_badge.add_css_class("media-badge");
     player_badge.set_halign(Align::Start);
     head.append(&player_badge);
@@ -126,7 +127,7 @@ where
     spacer.set_hexpand(true);
     head.append(&spacer);
 
-    let status_pill = Label::new(Some("Ожидание"));
+    let status_pill = Label::new(Some(tr("Idle", "Ожидание")));
     status_pill.add_css_class("media-status-pill");
     head.append(&status_pill);
 
@@ -162,14 +163,14 @@ where
     meta_box.set_valign(Align::Center);
     meta_box.set_hexpand(true);
 
-    let track_title = Label::new(Some("Ничего не воспроизводится"));
+    let track_title = Label::new(Some(tr("Nothing playing", "Ничего не воспроизводится")));
     track_title.add_css_class("media-title");
     track_title.set_xalign(0.0);
     track_title.set_ellipsize(gtk4::pango::EllipsizeMode::End);
     track_title.set_max_width_chars(25);
     meta_box.append(&track_title);
 
-    let track_artist = Label::new(Some("Ожидание медиапотока..."));
+    let track_artist = Label::new(Some(tr("Waiting for media stream...", "Ожидание медиапотока...")));
     track_artist.add_css_class("media-artist");
     track_artist.set_xalign(0.0);
     track_artist.set_ellipsize(gtk4::pango::EllipsizeMode::End);
@@ -287,17 +288,17 @@ where
         badge_ui.set_label(&format!("{} {}", ico, badge_text));
 
         if info.is_playing {
-            pill_ui.set_label("󰐊 Играет");
+            pill_ui.set_label(tr("󰐊 Playing", "󰐊 Играет"));
             pill_ui.remove_css_class("paused");
         } else {
-            pill_ui.set_label("󰏤 Пауза");
+            pill_ui.set_label(tr("󰏤 Paused", "󰏤 Пауза"));
             pill_ui.add_css_class("paused");
         }
 
         // Title & Artist/Album
         if info.title.is_empty() {
-            title_ui.set_label("Ничего не воспроизводится");
-            artist_ui.set_label("Ожидание медиапотока...");
+            title_ui.set_label(tr("Nothing playing", "Ничего не воспроизводится"));
+            artist_ui.set_label(tr("Waiting for media stream...", "Ожидание медиапотока..."));
             pos_ui.set_label("0:00");
             len_ui.set_label("0:00");
             p_bar_ui.set_fraction(0.0);
@@ -313,7 +314,7 @@ where
         } else if !info.artist.is_empty() {
             info.artist.clone()
         } else {
-            "Неизвестный исполнитель".to_string()
+            tr("Unknown artist", "Неизвестный исполнитель").to_string()
         };
         artist_ui.set_label(&sub_text);
 

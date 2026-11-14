@@ -12,8 +12,19 @@ fi
 
 command -v rclone >/dev/null || { echo "rclone не установлен (пакет rclone)."; exit 1; }
 if ! configured; then
+    client_id="${CLIENT_ID:-}"
+    client_secret="${CLIENT_SECRET:-}"
+    if [[ -z "$client_id" && -t 0 ]]; then
+        echo "Свой OAuth-клиент Google (Drive API) работает быстрее общего ключа rclone."
+        echo "Его client_id/client_secret хранятся только локально в ~/.config/rclone/rclone.conf."
+        echo "Оставьте поля пустыми, чтобы использовать общий ключ rclone."
+        read -rp "client_id: " client_id
+        read -rsp "client_secret: " client_secret
+        echo
+    fi
     echo "Откроется браузер для входа в Google Drive через rclone..."
-    rclone config create gdrive drive scope=drive
+    rclone config create gdrive drive scope=drive \
+        ${client_id:+client_id="$client_id"} ${client_secret:+client_secret="$client_secret"}
 fi
 if systemctl --user cat gdrive.service >/dev/null 2>&1; then
     systemctl --user daemon-reload

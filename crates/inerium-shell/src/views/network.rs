@@ -444,7 +444,7 @@ where
 
     // Header
     let head = Box::new(Orientation::Horizontal, 8);
-    let back_btn = Button::with_label("‹ Назад");
+    let back_btn = Button::with_label(tr("‹ Back", "‹ Назад"));
     back_btn.add_css_class("back-btn");
     let n_cb = nav_cb.clone();
     back_btn.connect_clicked(move |_| n_cb("control"));
@@ -453,7 +453,7 @@ where
     let title_box = Box::new(Orientation::Vertical, 1);
     title_box.set_hexpand(true);
 
-    let title = Label::new(Some("Wi-Fi и сети"));
+    let title = Label::new(Some(tr("Wi-Fi & Networks", "Wi-Fi и сети")));
     title.add_css_class("cc-host");
     title.set_xalign(0.0);
     title_box.append(&title);
@@ -472,13 +472,13 @@ where
 
     // Subheader with Rescan
     let subhead = Box::new(Orientation::Horizontal, 8);
-    let lbl = Label::new(Some("ДОСТУПНЫЕ СЕТИ"));
+    let lbl = Label::new(Some(tr("AVAILABLE NETWORKS", "ДОСТУПНЫЕ СЕТИ")));
     lbl.add_css_class("cc-label");
     lbl.set_xalign(0.0);
     lbl.set_hexpand(true);
     subhead.append(&lbl);
 
-    let rescan_btn = Button::with_label("󰑐 Обновить");
+    let rescan_btn = Button::with_label(tr("󰑐 Refresh", "󰑐 Обновить"));
     rescan_btn.add_css_class("cc-chip");
     subhead.append(&rescan_btn);
 
@@ -488,20 +488,20 @@ where
         let sub = status_sub.clone();
         Rc::new(move || {
             if hw::is_hotspot_active() {
-                sub.set_label("󱜠 Раздача Wi-Fi активна");
-                lbl_c.set_label("ТОЧКА ДОСТУПА");
+                sub.set_label(tr("󱜠 Hotspot is active", "󱜠 Раздача Wi-Fi активна"));
+                lbl_c.set_label(tr("HOTSPOT", "ТОЧКА ДОСТУПА"));
                 rescan_c.set_visible(false);
             } else if !hw::is_wifi_enabled() {
-                sub.set_label("Беспроводная сеть выключена");
-                lbl_c.set_label("ДОСТУПНЫЕ СЕТИ");
+                sub.set_label(tr("Wi-Fi is turned off", "Беспроводная сеть выключена"));
+                lbl_c.set_label(tr("AVAILABLE NETWORKS", "ДОСТУПНЫЕ СЕТИ"));
                 rescan_c.set_visible(true);
             } else if let Some(ssid) = hw::get_active_wifi_ssid() {
-                sub.set_label(&format!("󰄬 Подключено: {}", ssid));
-                lbl_c.set_label("ДОСТУПНЫЕ СЕТИ");
+                sub.set_label(&tr_fmt!("󰄬 Connected: {ssid}", "󰄬 Подключено: {ssid}", ssid = ssid));
+                lbl_c.set_label(tr("AVAILABLE NETWORKS", "ДОСТУПНЫЕ СЕТИ"));
                 rescan_c.set_visible(true);
             } else {
-                sub.set_label("Не подключено");
-                lbl_c.set_label("ДОСТУПНЫЕ СЕТИ");
+                sub.set_label(tr("Not connected", "Не подключено"));
+                lbl_c.set_label(tr("AVAILABLE NETWORKS", "ДОСТУПНЫЕ СЕТИ"));
                 rescan_c.set_visible(true);
             }
         })
@@ -520,7 +520,7 @@ where
     auth_box.append(&auth_target_lbl);
 
     let pass_entry = Entry::new();
-    pass_entry.set_placeholder_text(Some("Пароль Wi-Fi сети"));
+    pass_entry.set_placeholder_text(Some(tr("Wi-Fi password", "Пароль Wi-Fi сети")));
     pass_entry.set_visibility(false);
     auth_box.append(&pass_entry);
 
@@ -532,11 +532,11 @@ where
     auth_box.append(&error_lbl);
 
     let auth_actions = Box::new(Orientation::Horizontal, 8);
-    let connect_btn = Button::with_label("Подключить");
+    let connect_btn = Button::with_label(tr("Connect", "Подключить"));
     connect_btn.add_css_class("cc-chip");
     connect_btn.add_css_class("on");
 
-    let cancel_btn = Button::with_label("Отмена");
+    let cancel_btn = Button::with_label(tr("Cancel", "Отмена"));
     cancel_btn.add_css_class("cc-chip");
 
     let a_box_c = auth_box.clone();
@@ -615,19 +615,19 @@ where
             }
             NetEvent::ConnectDone { ssid, success, error, networks } => {
                 c_btn_ui.set_sensitive(true);
-                c_btn_ui.set_label("Подключить");
+                c_btn_ui.set_label(tr("Connect", "Подключить"));
 
                 if success {
                     a_b_ui.set_visible(false);
                     err_ui.set_visible(false);
                     err_ui.set_text("");
                 } else {
-                    let err_text = error.unwrap_or_else(|| "Ошибка подключения".to_string());
+                    let err_text = error.unwrap_or_else(|| tr("Connection error", "Ошибка подключения").to_string());
                     let clean = err_text.trim_start_matches("Error: ").trim_start_matches("Ошибка: ");
                     err_ui.set_text(&format!("󰅖 {}", clean));
                     err_ui.set_visible(true);
                     if a_b_ui.is_visible() {
-                        a_tgt_ui.set_label(&format!("Подключение к «{}»", ssid));
+                        a_tgt_ui.set_label(&tr_fmt!("Connecting to «{ssid}»", "Подключение к «{ssid}»", ssid = ssid));
                         p_val_ui.grab_focus();
                     }
                 }

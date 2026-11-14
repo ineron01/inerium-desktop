@@ -18,4 +18,5 @@ else
     notify-send -a "Bluetooth" -i bluetooth-active "Bluetooth" "Модуль Bluetooth включен"
 fi
 
-pkill -SIGUSR1 inerium-bluetooth 2>/dev/null || true
+# Linux TASK_COMM_LEN is 15 chars: inerium-bluetooth comm is truncated to inerium-bluetoo
+pkill -SIGUSR1 -x inerium-bluetoo 2>/dev/null || true

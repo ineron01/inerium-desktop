@@ -142,6 +142,7 @@ pub fn toggle_bluetooth(enable: bool) {
         } else {
             let _ = Command::new("bluetoothctl").args(["power", "off"]).output();
         }
-        let _ = Command::new("pkill").args(["-SIGUSR1", "inerium-bluetooth"]).output();
+        // Linux TASK_COMM_LEN is 15 chars: inerium-bluetooth is stored as inerium-bluetoo in comm
+        let _ = Command::new("pkill").args(["-SIGUSR1", "-x", "inerium-bluetoo"]).output();
     });
 }

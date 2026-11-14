@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 use std::thread;
@@ -115,10 +116,60 @@ pub fn get_active_wallpaper() -> String {
     map.values().next().cloned().unwrap_or_default()
 }
 
+pub fn inerium_wallpapers_dir() -> PathBuf {
+    home_dir().join(".local/share/inerium/wallpapers")
+}
+
+fn ensure_wallpapers_dir_populated(dir: &Path) {
+    let _ = fs::create_dir_all(dir);
+    let has_files = fs::read_dir(dir)
+        .map(|entries| {
+            entries.flatten().any(|e| {
+                let p = e.path();
+                p.is_file()
+                    && matches!(
+                        p.extension().and_then(|x| x.to_str()).unwrap_or("").to_lowercase().as_str(),
+                        "jpg" | "jpeg" | "png" | "webp"
+                    )
+            })
+        })
+        .unwrap_or(false);
+
+    if !has_files {
+        let home = home_dir();
+        let fallback_sources = [
+            home.join("Pictures/Wallpapers"),
+            home.join("Repos/inerium-desktop/assets/wallpapers"),
+            PathBuf::from("/usr/share/backgrounds"),
+        ];
+        for src in &fallback_sources {
+            if let Ok(entries) = fs::read_dir(src) {
+                for entry in entries.flatten() {
+                    let sp = entry.path();
+                    let ext = sp.extension().and_then(|x| x.to_str()).unwrap_or("").to_lowercase();
+                    if sp.is_file()
+                        && matches!(ext.as_str(), "jpg" | "jpeg" | "png" | "webp")
+                        && let Some(name) = sp.file_name()
+                    {
+                        let target = dir.join(name);
+                        if !target.exists() {
+                            let _ = fs::copy(&sp, &target);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn list_available_wallpapers() -> Vec<WallpaperItem> {
     let mut items = Vec::new();
     let home = home_dir();
+    let inerium_dir = inerium_wallpapers_dir();
+    ensure_wallpapers_dir_populated(&inerium_dir);
+
     let dirs = [
+        inerium_dir,
         home.join("Pictures/Wallpapers"),
         home.join("Обои"),
         home.join("Wallpapers"),

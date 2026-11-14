@@ -13,7 +13,7 @@ use gtk4::{
 
 use crate::i18n::{Lang, tr};
 use crate::model::{SetupPaths, StepStatus, apply_system_language, mark_setup_done};
-use crate::system::{evaluate_steps, self_remove_onboarding};
+use crate::system::evaluate_steps;
 
 #[derive(Clone)]
 pub struct StatusCallback {
@@ -54,11 +54,12 @@ pub fn build_main_window(
     let win = ApplicationWindow::builder()
         .application(app)
         .title(tr(lang, "Inerium Setup", "Настройка Inerium"))
-        .default_width(900)
-        .default_height(640)
+        .default_width(840)
+        .default_height(560)
         .resizable(true)
         .build();
     win.add_css_class("setup-window");
+    displays::clamp_window_to_screen(&win);
 
     let initial_tab = Rc::new(RefCell::new(if start_on_integrations {
         "integrations".to_string()
@@ -238,7 +239,7 @@ fn build_shell(
         .hexpand(true)
         .build();
 
-    let displays_page = displays::build_displays_tab(paths.clone(), status_cb.clone(), lang);
+    let displays_page = displays::build_displays_tab(win.clone(), paths.clone(), status_cb.clone(), lang);
     let interface_page = interface::build_interface_tab(paths.clone(), status_cb.clone(), lang);
     let integrations_page = integrations::build_integrations_tab(
         paths.clone(),
@@ -314,7 +315,6 @@ fn build_shell(
         finish_btn.connect_clicked(move |_| {
             let _ = apply_system_language(&paths_c, lang);
             let _ = mark_setup_done(&paths_c);
-            let _ = self_remove_onboarding(&paths_c);
             win_c.close();
         });
         footer.append(&finish_btn);

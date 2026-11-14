@@ -9,6 +9,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
+use inerium_i18n::tr;
 use inerium_tools::format::escape_json;
 use inerium_tools::ipc::SelfPipe;
 use inerium_tools::sys::posix::get_interface_ipv4;
@@ -70,37 +71,56 @@ fn get_ip_address(iface: &str) -> Option<String> {
 fn format_tooltip() -> String {
     match detect_network() {
         NetState::Ethernet(iface) => {
-            let ip = get_ip_address(&iface).unwrap_or_else(|| "Получение...".to_string());
+            let ip = get_ip_address(&iface).unwrap_or_else(|| tr("Acquiring...", "Получение...").to_string());
             format!(
                 "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
-                <span color='#87a987' weight='bold'>󰈀 Проводная сеть</span>\n\
-                <span color='#727169'>Интерфейс:</span> <span color='#e6e2cc'>{}</span>\n\
-                <span color='#727169'>IP-адрес:</span>   <span color='#8ba4b0'>{}</span>\n\
-                <span color='#727169'>Статус:</span>     <span color='#87a987'>Подключено</span>\n\
-                <span color='#727169' size='small'>ЛКМ: Сети и Wi-Fi · ПКМ: Вкл/выкл · СКМ: Настройка соединений</span>\
+                <span color='#87a987' weight='bold'>{}</span>\n\
+                <span color='#727169'>{}</span> <span color='#e6e2cc'>{}</span>\n\
+                <span color='#727169'>{}</span>   <span color='#8ba4b0'>{}</span>\n\
+                <span color='#727169'>{}</span>     <span color='#87a987'>{}</span>\n\
+                <span color='#727169' size='small'>{}</span>\
                 </span>",
-                iface, ip
+                tr("󰈀 Ethernet", "󰈀 Проводная сеть"),
+                tr("Interface:", "Интерфейс:"),
+                iface,
+                tr("IP Address:", "IP-адрес:"),
+                ip,
+                tr("Status:", "Статус:"),
+                tr("Connected", "Подключено"),
+                tr("LMB: Networks & Wi-Fi · RMB: Toggle · MMB: Connection Settings", "ЛКМ: Сети и Wi-Fi · ПКМ: Вкл/выкл · СКМ: Настройка соединений")
             )
         }
         NetState::Wifi(iface) => {
-            let ip = get_ip_address(&iface).unwrap_or_else(|| "Получение...".to_string());
+            let ip = get_ip_address(&iface).unwrap_or_else(|| tr("Acquiring...", "Получение...").to_string());
             format!(
                 "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
-                <span color='#7fb4ca' weight='bold'>󰤨 Беспроводная сеть</span>\n\
-                <span color='#727169'>Интерфейс:</span> <span color='#e6e2cc'>{}</span>\n\
-                <span color='#727169'>IP-адрес:</span>   <span color='#8ba4b0'>{}</span>\n\
-                <span color='#727169'>Статус:</span>     <span color='#87a987'>В сети</span>\n\
-                <span color='#727169' size='small'>ЛКМ: Сети и Wi-Fi · ПКМ: Вкл/выкл · СКМ: Настройка соединений</span>\
+                <span color='#7fb4ca' weight='bold'>{}</span>\n\
+                <span color='#727169'>{}</span> <span color='#e6e2cc'>{}</span>\n\
+                <span color='#727169'>{}</span>   <span color='#8ba4b0'>{}</span>\n\
+                <span color='#727169'>{}</span>     <span color='#87a987'>{}</span>\n\
+                <span color='#727169' size='small'>{}</span>\
                 </span>",
-                iface, ip
+                tr("󰤨 Wireless Network", "󰤨 Беспроводная сеть"),
+                tr("Interface:", "Интерфейс:"),
+                iface,
+                tr("IP Address:", "IP-адрес:"),
+                ip,
+                tr("Status:", "Статус:"),
+                tr("Online", "В сети"),
+                tr("LMB: Networks & Wi-Fi · RMB: Toggle · MMB: Connection Settings", "ЛКМ: Сети и Wi-Fi · ПКМ: Вкл/выкл · СКМ: Настройка соединений")
             )
         }
         NetState::Disconnected => {
-            "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
-            <span color='#c4746e' weight='bold'>󰤭 Сеть отключена</span>\n\
-            <span color='#727169'>Интерфейсы не активны</span>\n\
-            <span color='#727169' size='small'>ЛКМ: Сети и Wi-Fi · СКМ: Настройка соединений</span>\
-            </span>".to_string()
+            format!(
+                "<span font_desc='JetBrainsMono Nerd Font 10.5'>\
+                <span color='#c4746e' weight='bold'>{}</span>\n\
+                <span color='#727169'>{}</span>\n\
+                <span color='#727169' size='small'>{}</span>\
+                </span>",
+                tr("󰤭 Network Disconnected", "󰤭 Сеть отключена"),
+                tr("Interfaces inactive", "Интерфейсы не активны"),
+                tr("LMB: Networks & Wi-Fi · MMB: Connection Settings", "ЛКМ: Сети и Wi-Fi · СКМ: Настройка соединений")
+            )
         }
     }
 }
@@ -140,7 +160,9 @@ fn watch_mode(waybar: bool) {
             last_output = current;
         }
 
-        self_pipe.wait_event(3000);
+        if self_pipe.wait_event(3000) {
+            inerium_i18n::Lang::reinit();
+        }
     }
 }
 

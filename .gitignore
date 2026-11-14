@@ -8,6 +8,7 @@ config/hypr/profile
 config/hypr/config/monitors_local.lua
 config/hypr/config/workspaces_local.lua
 config/hypr/config/inputs_local.lua
+config/hypr/config/binds_local.lua
 config/hypr/hypridle_local.conf
 config/systemd/user/hypridle.service.d/local.conf
 config/swayosd/config.toml

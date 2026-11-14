@@ -10,6 +10,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use inerium_i18n::{Lang, tr, tr_fmt};
 use inerium_tools::format::escape_json;
 use inerium_tools::ipc::{PidRegistry, SelfPipe};
 use inerium_tools::sys::posix::SIGUSR1;
@@ -272,51 +273,83 @@ fn format_battery(info: &BatteryInfo) -> String {
 
 fn format_tooltip(info: &BatteryInfo) -> String {
     if !info.present {
-        return "Батарея не обнаружена (питание от сети)".to_string();
+        return tr("No battery detected (AC power)", "Батарея не обнаружена (питание от сети)").to_string();
     }
-    let status_ru = match info.status.as_str() {
-        "Charging" => "Заряжается",
-        "Discharging" => "Разряжается",
-        "Full" => "Полный заряд",
-        "Not charging" => "Не заряжается (лимит)",
+    let status_str = match info.status.as_str() {
+        "Charging" => tr("Charging", "Заряжается"),
+        "Discharging" => tr("Discharging", "Разряжается"),
+        "Full" => tr("Full", "Полный заряд"),
+        "Not charging" => tr("Not charging (limit)", "Не заряжается (лимит)"),
         _ => &info.status,
     };
 
-    let ac_str = if info.ac_online { "Подключен" } else { "Отключен" };
+    let ac_str = if info.ac_online {
+        tr("Connected", "Подключен")
+    } else {
+        tr("Disconnected", "Отключен")
+    };
 
     let mut lines = Vec::new();
     lines.push("<span font_desc='JetBrainsMono Nerd Font 10.5'>".to_string());
-    lines.push(format!(
-        "<span color='#87a987' weight='bold'>󰁹 Батарея: {}%</span>",
-        info.capacity
+    lines.push(tr_fmt!(
+        "<span color='#87a987' weight='bold'>󰁹 Battery: {cap}%</span>",
+        "<span color='#87a987' weight='bold'>󰁹 Батарея: {cap}%</span>",
+        cap = info.capacity,
     ));
-    lines.push(format!("<span color='#727169'>{:<13}</span><span color='#e6e2cc'>{}</span>", "Статус:", status_ru));
-    lines.push(format!("<span color='#727169'>{:<13}</span><span color='#8ba4b0'>{}</span>", "Блок питания:", ac_str));
+    lines.push(format!(
+        "<span color='#727169'>{:<14}</span><span color='#e6e2cc'>{}</span>",
+        tr("Status:", "Статус:"),
+        status_str
+    ));
+    lines.push(format!(
+        "<span color='#727169'>{:<14}</span><span color='#8ba4b0'>{}</span>",
+        tr("Power supply:", "Блок питания:"),
+        ac_str
+    ));
 
     if info.threshold < 100 {
-        lines.push(format!("<span color='#727169'>{:<13}</span><span color='#c4b28a'>{}%</span>", "Лимит заряда:", info.threshold));
+        lines.push(format!(
+            "<span color='#727169'>{:<14}</span><span color='#c4b28a'>{}%</span>",
+            tr("Charge limit:", "Лимит заряда:"),
+            info.threshold
+        ));
     }
 
     if !info.time_str.is_empty() {
         let label = if info.status == "Charging" {
             if info.threshold < 100 {
-                "До лимита:"
+                tr("Until limit:", "До лимита:")
             } else {
-                "До полной:"
+                tr("Until full:", "До полной:")
             }
         } else {
-            "Осталось:"
+            tr("Remaining:", "Осталось:")
         };
-        lines.push(format!("<span color='#727169'>{:<13}</span><span color='#c4b28a'>{}</span>", label, info.time_str));
+        lines.push(format!(
+            "<span color='#727169'>{:<14}</span><span color='#c4b28a'>{}</span>",
+            label, info.time_str
+        ));
     }
 
     if info.power_w > 0.05 {
-        lines.push(format!("<span color='#727169'>{:<13}</span><span color='#e6e2cc'>{:.1} Вт</span>", "Мощность:", info.power_w));
+        lines.push(format!(
+            "<span color='#727169'>{:<14}</span><span color='#e6e2cc'>{:.1} {}</span>",
+            tr("Power:", "Мощность:"),
+            info.power_w,
+            tr("W", "Вт")
+        ));
     }
 
-    lines.push(format!("<span color='#727169'>{:<13}</span><span color='#87a987'>{:.1}%</span>", "Здоровье АКБ:", info.health_pct));
+    lines.push(format!(
+        "<span color='#727169'>{:<14}</span><span color='#87a987'>{:.1}%</span>",
+        tr("Battery health:", "Здоровье АКБ:"),
+        info.health_pct
+    ));
     lines.push(String::new());
-    lines.push("<span color='#727169' size='small'>ЛКМ: Переключить время / процент</span>".to_string());
+    lines.push(format!(
+        "<span color='#727169' size='small'>{}</span>",
+        tr("LMB: Toggle time / percentage", "ЛКМ: Переключить время / процент")
+    ));
     lines.push("</span>".to_string());
 
     lines.join("\n")
@@ -372,7 +405,9 @@ fn run_watch(waybar: bool) {
             last_output = current;
         }
 
-        self_pipe.wait_event(2000);
+        if self_pipe.wait_event(2000) {
+            Lang::reinit();
+        }
     }
 }
 
@@ -467,6 +502,7 @@ mod tests {
 
     #[test]
     fn test_tooltip_includes_threshold_and_label() {
+        Lang::set(Lang::Ru);
         let info = BatteryInfo {
             present: true,
             capacity: 55,

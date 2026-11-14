@@ -156,7 +156,7 @@ impl BatteryBackend {
             return format!("{} {}%", ico, cap);
         }
 
-        "󰚥 Сеть".to_string()
+        inerium_i18n::tr("󰚥 AC Power", "󰚥 Сеть").to_string()
     }
 }
 

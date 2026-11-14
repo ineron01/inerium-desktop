@@ -212,10 +212,11 @@ impl CoolingSubsystem {
             _ => "0 RPM".to_string(),
         };
 
+        let fan_prefix = inerium_i18n::tr("󰈨 Fans", "󰈨 Кулеры");
         if cpu_pct.is_some() || gpu_pct.is_some() {
-            format!("󰈨 Кулеры: CPU {}% ({}) · GPU {}% ({})", c_pct, c_rpm_str, g_pct, g_rpm_str)
+            format!("{}: CPU {}% ({}) · GPU {}% ({})", fan_prefix, c_pct, c_rpm_str, g_pct, g_rpm_str)
         } else {
-            format!("󰈨 Кулеры: Fan 1 ({}) · Fan 2 ({})", c_rpm_str, g_rpm_str)
+            format!("{}: Fan 1 ({}) · Fan 2 ({})", fan_prefix, c_rpm_str, g_rpm_str)
         }
     }
 

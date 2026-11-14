@@ -7,6 +7,7 @@ use gtk4::prelude::*;
 use gtk4::{Box, Button, Label, Orientation, ScrolledWindow, Switch};
 
 use crate::hw;
+use inerium_i18n::tr;
 
 #[derive(Clone)]
 pub struct BtDevice {
@@ -84,9 +85,9 @@ pub fn query_devices() -> Vec<BtDevice> {
 fn populate_bt_list(list_box: &Box, devices: Vec<BtDevice>) {
     if devices.is_empty() {
         let empty_lbl = Label::new(Some(if hw::is_bluetooth_enabled() {
-            "Устройства не найдены. Нажмите «Поиск»"
+            tr("No devices found. Click «Scan»", "Устройства не найдены. Нажмите «Поиск»")
         } else {
-            "Bluetooth выключен"
+            tr("Bluetooth is disabled", "Bluetooth выключен")
         }));
         empty_lbl.add_css_class("cc-meta");
         empty_lbl.set_margin_top(20);
@@ -129,7 +130,7 @@ fn populate_bt_list(list_box: &Box, devices: Vec<BtDevice>) {
         txt.append(&mac_lbl);
         inner.append(&txt);
 
-        let badge = Label::new(Some(if dev.connected { "󰄬 Подключено" } else { "" }));
+        let badge = Label::new(Some(if dev.connected { tr("󰄬 Connected", "󰄬 Подключено") } else { "" }));
         badge.add_css_class("card-badge");
         badge.set_visible(dev.connected);
         inner.append(&badge);
@@ -183,7 +184,7 @@ where
 
     // Header
     let head = Box::new(Orientation::Horizontal, 8);
-    let back_btn = Button::with_label("‹ Назад");
+    let back_btn = Button::with_label(tr("‹ Back", "‹ Назад"));
     back_btn.add_css_class("back-btn");
     let n_cb = nav_cb.clone();
     back_btn.connect_clicked(move |_| n_cb("control"));
@@ -202,13 +203,13 @@ where
 
     // Subheader with Scan
     let subhead = Box::new(Orientation::Horizontal, 8);
-    let lbl = Label::new(Some("УСТРОЙСТВА"));
+    let lbl = Label::new(Some(tr("DEVICES", "УСТРОЙСТВА")));
     lbl.add_css_class("cc-label");
     lbl.set_xalign(0.0);
     lbl.set_hexpand(true);
     subhead.append(&lbl);
 
-    let scan_btn = Button::with_label("󰑐 Поиск");
+    let scan_btn = Button::with_label(tr("󰑐 Scan", "󰑐 Поиск"));
     scan_btn.add_css_class("cc-chip");
     subhead.append(&scan_btn);
     root.append(&subhead);

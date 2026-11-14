@@ -679,6 +679,7 @@ dependencies = [
 name = "inerium-tools"
 version = "0.1.0"
 dependencies = [
+ "inerium-i18n",
  "serde",
  "serde_json",
  "sha2",

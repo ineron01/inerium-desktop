@@ -3,7 +3,7 @@ use std::env;
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::thread;
 
@@ -135,6 +135,7 @@ struct AppState {
     is_visible: bool,
     safe_zone: Option<SafeZone>,
     session_id: u64,
+    modal_dialog_active: bool,
 }
 
 thread_local! {
@@ -145,7 +146,14 @@ thread_local! {
         is_visible: false,
         safe_zone: None,
         session_id: 0,
+        modal_dialog_active: false,
     }) };
+}
+
+pub fn set_modal_dialog_active(active: bool) {
+    STATE.with(|s| {
+        s.borrow_mut().modal_dialog_active = active;
+    });
 }
 
 static CMD_QUEUE: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -197,18 +205,28 @@ fn main() {
         let guard = app.hold();
         Box::leak(Box::new(guard)); // Keep daemon held permanently
 
-        // Watch ~/.config/locale.conf for live language switches without relogin
+        // Watch ~/.config directory for locale.conf changes (resilient to atomic fs::rename & inode recreation)
         if let Some(home) = env::var_os("HOME") {
-            let locale_conf = PathBuf::from(home).join(".config/locale.conf");
-            let gfile = gio::File::for_path(&locale_conf);
-            if let Ok(monitor) = gfile.monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
-                monitor.connect_changed(|_, _, _, event| {
-                    if matches!(
-                        event,
-                        gio::FileMonitorEvent::ChangesDoneHint
-                            | gio::FileMonitorEvent::Created
-                            | gio::FileMonitorEvent::MovedIn
-                    ) {
+            let config_dir = PathBuf::from(home).join(".config");
+            let gdir = gio::File::for_path(&config_dir);
+            if let Ok(monitor) = gdir.monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE) {
+                monitor.connect_changed(|_, file, other_file, event| {
+                    let is_target = file.basename().is_some_and(|b| b == Path::new("locale.conf"))
+                        || other_file
+                            .as_ref()
+                            .and_then(|f| f.basename())
+                            .is_some_and(|b| b == Path::new("locale.conf"));
+
+                    if is_target
+                        && matches!(
+                            event,
+                            gio::FileMonitorEvent::ChangesDoneHint
+                                | gio::FileMonitorEvent::Created
+                                | gio::FileMonitorEvent::MovedIn
+                                | gio::FileMonitorEvent::Renamed
+                                | gio::FileMonitorEvent::Changed
+                        )
+                    {
                         inerium_i18n::Lang::reinit();
                         STATE.with(|s| {
                             let mut st = s.borrow_mut();
@@ -443,6 +461,9 @@ fn show_view(state: &mut AppState, view_name: &str) {
                 let mut st = s.borrow_mut();
                 if !st.is_visible || st.session_id != current_session {
                     return glib::ControlFlow::Break;
+                }
+                if st.modal_dialog_active {
+                    return glib::ControlFlow::Continue;
                 }
 
                 let (alloc_w, alloc_h) = if let Some(ref w) = st.window {

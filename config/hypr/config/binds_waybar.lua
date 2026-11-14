@@ -9,8 +9,11 @@ end
 ---- WAYBAR / ROFI ACTIONS -----
 --------------------------------
 
--- Меню приложений и окон
-hl.bind(mainMod .. " + Space",   hl.dsp.exec_cmd("uwsm app -- rofi -show drun"))
+-- Меню приложений и окон (с поддержкой локального оверлея при конфликте с Super+Space)
+local binds_local_ok, binds_local = pcall(require, "config.binds_local")
+if not (binds_local_ok and type(binds_local) == "table" and binds_local.launcher_bound) then
+    hl.bind(mainMod .. " + Space",   hl.dsp.exec_cmd("uwsm app -- rofi -show drun"))
+end
 
 -- Центр управления
 hl.bind(mainMod .. " + A",       hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup control"))
