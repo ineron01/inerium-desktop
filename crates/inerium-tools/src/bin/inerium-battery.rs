@@ -53,13 +53,13 @@ fn read_battery_threshold(bat_dir: &Path) -> i64 {
     100
 }
 
-fn discover_power_supplies() -> (Option<PathBuf>, bool) {
+fn discover_power_supplies() -> (Vec<PathBuf>, bool) {
     discover_power_supplies_in(Path::new("/sys/class/power_supply"))
 }
 
-fn discover_power_supplies_in(base: &Path) -> (Option<PathBuf>, bool) {
-    let mut bat_path: Option<PathBuf> = None;
-    let mut fallback_bat: Option<PathBuf> = None;
+fn discover_power_supplies_in(base: &Path) -> (Vec<PathBuf>, bool) {
+    let mut bat_paths: Vec<PathBuf> = Vec::new();
+    let mut fallback_bats: Vec<PathBuf> = Vec::new();
     let mut ac_online = false;
 
     if let Ok(entries) = fs::read_dir(base) {
@@ -67,7 +67,7 @@ fn discover_power_supplies_in(base: &Path) -> (Option<PathBuf>, bool) {
         dirs.sort();
         for path in dirs {
             let ptype = read_sysfs_str(&path.join("type"));
-            if ptype == "Mains" {
+            if ptype == "Mains" || ptype == "USB" || ptype == "USB_C" || ptype == "USB_PD" {
                 if read_sysfs_i64(&path.join("online")) == 1 {
                     ac_online = true;
                 }
@@ -77,16 +77,22 @@ fn discover_power_supplies_in(base: &Path) -> (Option<PathBuf>, bool) {
                     continue;
                 }
                 let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                if name.starts_with("BAT") && bat_path.is_none() {
-                    bat_path = Some(path);
-                } else if fallback_bat.is_none() {
-                    fallback_bat = Some(path);
+                if name.starts_with("BAT") {
+                    bat_paths.push(path);
+                } else {
+                    fallback_bats.push(path);
                 }
             }
         }
     }
 
-    (bat_path.or(fallback_bat), ac_online)
+    let final_bats = if !bat_paths.is_empty() {
+        bat_paths
+    } else {
+        fallback_bats
+    };
+
+    (final_bats, ac_online)
 }
 
 struct BatteryInfo {
@@ -102,8 +108,8 @@ struct BatteryInfo {
 }
 
 fn get_battery_info() -> BatteryInfo {
-    let (bat_opt, ac_online) = discover_power_supplies();
-    let Some(bat_dir) = bat_opt else {
+    let (bats, mut ac_online) = discover_power_supplies();
+    if bats.is_empty() {
         return BatteryInfo {
             present: false,
             capacity: 0,
@@ -115,51 +121,107 @@ fn get_battery_info() -> BatteryInfo {
             time_str: String::new(),
             icon: ICON_PLUGGED,
         };
-    };
+    }
 
-    let cap = read_sysfs_i64(&bat_dir.join("capacity")).clamp(0, 100);
-    let st = read_sysfs_str(&bat_dir.join("status"));
+    let mut total_now = 0i64;
+    let mut total_full = 0i64;
+    let mut total_design = 0i64;
+    let mut total_power_w = 0.0f64;
+    let mut total_rate = 0i64;
+    let mut min_threshold = 100i64;
+    let mut has_charging = false;
+    let mut has_discharging = false;
+    let mut is_full = true;
+    let mut cap_sum = 0i64;
 
-    let (now, full, design, power_w, rate) = if bat_dir.join("charge_now").exists() {
-        let now = read_sysfs_i64(&bat_dir.join("charge_now"));
-        let full = read_sysfs_i64(&bat_dir.join("charge_full"));
-        let design = read_sysfs_i64(&bat_dir.join("charge_full_design")).max(1);
-        let curr = read_sysfs_i64(&bat_dir.join("current_now"));
-        let volt = read_sysfs_i64(&bat_dir.join("voltage_now"));
-        let pw = (volt as f64 * curr as f64) / 1e12;
-        (now, full, design, pw, curr)
+    for bat_dir in &bats {
+        let cap = read_sysfs_i64(&bat_dir.join("capacity")).clamp(0, 100);
+        cap_sum += cap;
+        let st = read_sysfs_str(&bat_dir.join("status"));
+        if st == "Charging" {
+            has_charging = true;
+            is_full = false;
+        } else if st == "Discharging" {
+            has_discharging = true;
+            is_full = false;
+        } else if st != "Full" && !st.is_empty() {
+            is_full = false;
+        }
+
+        let (now, full, design, pw, rate) = if bat_dir.join("charge_now").exists() {
+            let now = read_sysfs_i64(&bat_dir.join("charge_now"));
+            let full = read_sysfs_i64(&bat_dir.join("charge_full"));
+            let design = read_sysfs_i64(&bat_dir.join("charge_full_design")).max(1);
+            let curr = read_sysfs_i64(&bat_dir.join("current_now"));
+            let volt = read_sysfs_i64(&bat_dir.join("voltage_now"));
+            let pw = (volt as f64 * curr as f64) / 1e12;
+            (now, full, design, pw, curr)
+        } else {
+            let now = read_sysfs_i64(&bat_dir.join("energy_now"));
+            let full = read_sysfs_i64(&bat_dir.join("energy_full"));
+            let design = read_sysfs_i64(&bat_dir.join("energy_full_design")).max(1);
+            let pnow = read_sysfs_i64(&bat_dir.join("power_now"));
+            let pw = pnow as f64 / 1e6;
+            (now, full, design, pw, pnow)
+        };
+
+        total_now += now;
+        total_full += full;
+        total_design += design;
+        total_power_w += pw;
+        total_rate += rate;
+
+        let th = read_battery_threshold(bat_dir);
+        if th < min_threshold {
+            min_threshold = th;
+        }
+    }
+
+    if has_charging {
+        ac_online = true;
+    }
+
+    let overall_status = if has_charging {
+        "Charging".to_string()
+    } else if has_discharging {
+        "Discharging".to_string()
+    } else if is_full {
+        "Full".to_string()
+    } else if ac_online {
+        "Not charging".to_string()
     } else {
-        let now = read_sysfs_i64(&bat_dir.join("energy_now"));
-        let full = read_sysfs_i64(&bat_dir.join("energy_full"));
-        let design = read_sysfs_i64(&bat_dir.join("energy_full_design")).max(1);
-        let pnow = read_sysfs_i64(&bat_dir.join("power_now"));
-        let pw = pnow as f64 / 1e6;
-        (now, full, design, pw, pnow)
+        "Discharging".to_string()
     };
 
-    let health_pct = if full > 0 {
-        (full as f64 / design as f64) * 100.0
+    let capacity = if total_full > 0 {
+        ((total_now as f64 / total_full as f64) * 100.0).round().clamp(0.0, 100.0) as i64
+    } else {
+        (cap_sum / bats.len() as i64).clamp(0, 100)
+    };
+
+    let health_pct = if total_full > 0 && total_design > 0 {
+        ((total_full as f64 / total_design as f64) * 100.0).clamp(0.0, 100.0)
     } else {
         100.0
     };
 
-    let threshold = read_battery_threshold(&bat_dir);
+    let threshold = min_threshold;
 
-    let time_str = if rate > 0 {
-        if st == "Discharging" || (!ac_online && now > 0) {
-            let hrs = now as f64 / rate as f64;
+    let time_str = if total_rate > 0 {
+        if overall_status == "Discharging" || (!ac_online && total_now > 0) {
+            let hrs = total_now as f64 / total_rate as f64;
             let h = hrs as i64;
             let m = ((hrs - h as f64) * 60.0) as i64;
             format!("{}ч {:02}м", h, m)
-        } else if st == "Charging" {
+        } else if overall_status == "Charging" {
             let target = if threshold < 100 {
-                ((full as f64) * (threshold as f64 / 100.0)).round() as i64
+                ((total_full as f64) * (threshold as f64 / 100.0)).round() as i64
             } else {
-                full
+                total_full
             };
-            if target > now {
-                let rem = target - now;
-                let hrs = rem as f64 / rate as f64;
+            if target > total_now {
+                let rem = target - total_now;
+                let hrs = rem as f64 / total_rate as f64;
                 let h = hrs as i64;
                 let m = ((hrs - h as f64) * 60.0) as i64;
                 format!("{}ч {:02}м до {}%", h, m, threshold)
@@ -174,22 +236,22 @@ fn get_battery_info() -> BatteryInfo {
     };
 
     let icon = if ac_online {
-        if st == "Charging" {
+        if overall_status == "Charging" {
             ICON_CHARGING
         } else {
             ICON_PLUGGED
         }
     } else {
-        let idx = ((cap / 10).clamp(0, 9)) as usize;
+        let idx = ((capacity / 10).clamp(0, 9)) as usize;
         BATTERY_ICONS[idx]
     };
 
     BatteryInfo {
         present: true,
-        capacity: cap,
-        status: st,
+        capacity,
+        status: overall_status,
         ac_online,
-        power_w,
+        power_w: total_power_w,
         health_pct,
         threshold,
         time_str,
@@ -351,8 +413,8 @@ mod tests {
 
     #[test]
     fn test_desktop_without_battery_hides_waybar_module() {
-        let (bat, ac) = discover_power_supplies_in(Path::new("/nonexistent/power_supply"));
-        assert!(bat.is_none());
+        let (bats, ac) = discover_power_supplies_in(Path::new("/nonexistent/power_supply"));
+        assert!(bats.is_empty());
         assert!(!ac);
         let info = BatteryInfo {
             present: false,
@@ -421,5 +483,30 @@ mod tests {
         assert!(tip.contains("80%"));
         assert!(tip.contains("До лимита:"));
         assert!(tip.contains("0ч 30м до 80%"));
+    }
+
+    #[test]
+    fn test_type_c_pd_and_multi_battery_detection() {
+        let root = env::temp_dir().join(format!("inerium_bat_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        let usb_pd = root.join("ucsi-source-psy-USBC000:001");
+        fs::create_dir_all(&usb_pd).unwrap();
+        fs::write(usb_pd.join("type"), "USB_PD\n").unwrap();
+        fs::write(usb_pd.join("online"), "1\n").unwrap();
+
+        let bat0 = root.join("BAT0");
+        let bat1 = root.join("BAT1");
+        fs::create_dir_all(&bat0).unwrap();
+        fs::create_dir_all(&bat1).unwrap();
+        fs::write(bat0.join("type"), "Battery\n").unwrap();
+        fs::write(bat1.join("type"), "Battery\n").unwrap();
+
+        let (bats, ac) = discover_power_supplies_in(&root);
+        assert!(ac);
+        assert_eq!(bats.len(), 2);
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

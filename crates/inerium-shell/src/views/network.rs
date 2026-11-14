@@ -8,6 +8,7 @@ use gtk4::prelude::*;
 use gtk4::{Box, Button, Entry, Label, Orientation, ScrolledWindow, Switch};
 
 use crate::hw;
+use inerium_i18n::{tr, tr_fmt};
 
 #[derive(Clone)]
 pub struct WifiAp {
@@ -163,32 +164,33 @@ fn populate_wifi_list(
 
         let title_box = Box::new(Orientation::Vertical, 2);
         title_box.set_hexpand(true);
-        let title = Label::new(Some("Занято точкой доступа"));
+        let title = Label::new(Some(tr("Hotspot Active", "Занято точкой доступа")));
         title.add_css_class("card-title");
         title.set_xalign(0.0);
         title_box.append(&title);
 
-        let sub = Label::new(Some("Раздача Wi-Fi (точка доступа)"));
+        let sub = Label::new(Some(tr("Wi-Fi Hotspot is active", "Раздача Wi-Fi (точка доступа)")));
         sub.add_css_class("card-sub");
         sub.set_xalign(0.0);
         title_box.append(&sub);
         top_row.append(&title_box);
         card.append(&top_row);
 
-        let desc = Label::new(Some(
-            "Беспроводной модуль сейчас работает в режиме раздачи интернета (AP).\n\nДля сканирования и подключения к другим Wi-Fi сетям сначала выключите точку доступа."
-        ));
+        let desc = Label::new(Some(tr(
+            "The wireless adapter is currently broadcasting Wi-Fi (AP mode).\n\nTo scan and connect to other Wi-Fi networks, turn off the hotspot first.",
+            "Беспроводной модуль сейчас работает в режиме раздачи интернета (AP).\n\nДля сканирования и подключения к другим Wi-Fi сетям сначала выключите точку доступа.",
+        )));
         desc.add_css_class("cc-meta");
         desc.set_wrap(true);
         desc.set_xalign(0.0);
         card.append(&desc);
 
-        let stop_btn = Button::with_label("󱜡  Выключить точку доступа");
+        let stop_btn = Button::with_label(tr("󱜡  Stop Hotspot", "󱜡  Выключить точку доступа"));
         stop_btn.add_css_class("cc-chip");
         stop_btn.add_css_class("on");
         stop_btn.connect_clicked(|b| {
             b.set_sensitive(false);
-            b.set_label("󰑐 Выключение...");
+            b.set_label(tr("󰑐 Stopping...", "󰑐 Выключение..."));
             thread::spawn(|| {
                 let bin = hw::home_dir().join(".local/bin/inerium-hotspot");
                 let mut cmd = if bin.exists() {
@@ -216,9 +218,9 @@ fn populate_wifi_list(
 
     if networks.is_empty() {
         let empty_lbl = Label::new(Some(if hw::is_wifi_enabled() {
-            "Сети не найдены. Нажмите «Обновить»"
+            tr("No networks found. Click «Refresh»", "Сети не найдены. Нажмите «Обновить»")
         } else {
-            "Wi-Fi выключен"
+            tr("Wi-Fi is turned off", "Wi-Fi выключен")
         }));
         empty_lbl.add_css_class("cc-meta");
         empty_lbl.set_margin_top(20);
@@ -256,9 +258,10 @@ fn populate_wifi_list(
         txt.append(&name_lbl);
 
         let sec_str = if net.is_active {
-            format!("Подключено • {}", if net.security.is_empty() { "Открытая сеть" } else { &net.security })
+            let sec_desc = if net.security.is_empty() { tr("Open network", "Открытая сеть") } else { &net.security };
+            tr_fmt!("Connected • {sec_desc}", "Подключено • {sec_desc}", sec_desc = sec_desc)
         } else if net.security.is_empty() {
-            "Открытая сеть".to_string()
+            tr("Open network", "Открытая сеть").to_string()
         } else {
             net.security.clone()
         };
@@ -271,6 +274,11 @@ fn populate_wifi_list(
         // Badge: Active ("󰄬 В сети") or Saved ("󰄬 Сохранено")
         let badge = Label::new(None);
         badge.add_css_class("card-badge");
+        if net.is_active {
+            badge.set_label(tr("󰄬 Connected", "󰄬 В сети"));
+        } else if net.is_saved {
+            badge.set_label(tr("Saved", "Сохранено"));
+        }
         if net.is_active {
             badge.set_label("󰄬 В сети");
             badge.add_css_class("active");

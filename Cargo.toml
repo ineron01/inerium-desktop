@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "crates/inerium-i18n",
     "crates/inerium-tools",
     "crates/inerium-shell",
     "crates/inerium-greeter",

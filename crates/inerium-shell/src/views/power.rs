@@ -5,6 +5,7 @@ use std::thread;
 use gdk4::Key;
 use gtk4::prelude::*;
 use gtk4::{Align, Box, Button, EventControllerKey, GestureClick, Label, Orientation};
+use inerium_i18n::tr;
 
 pub fn build_power_menu<FClose>(close_cb: FClose) -> (Box, i32, i32)
 where
@@ -31,12 +32,15 @@ where
     let header_box = Box::new(Orientation::Vertical, 4);
     header_box.set_halign(Align::Center);
 
-    let title = Label::new(Some("Управление питанием"));
+    let title = Label::new(Some(tr("Power Management", "Управление питанием")));
     title.add_css_class("power-title");
     title.set_halign(Align::Center);
     header_box.append(&title);
 
-    let subtitle = Label::new(Some("Нажмите 1–5 на клавиатуре или выберите действие"));
+    let subtitle = Label::new(Some(tr(
+        "Press 1–5 on keyboard or select an action",
+        "Нажмите 1–5 на клавиатуре или выберите действие",
+    )));
     subtitle.add_css_class("power-subtitle");
     subtitle.set_halign(Align::Center);
     header_box.append(&subtitle);
@@ -136,33 +140,33 @@ where
 
     // 1. Lock
     let a1 = act_lock.clone();
-    let lock_card = make_power_card("󰌾", "Блокировка", "1", false, move || a1());
+    let lock_card = make_power_card("󰌾", tr("Lock", "Блокировка"), "1", false, move || a1());
     grid.append(&lock_card);
 
     // 2. Logout
     let a2 = act_logout.clone();
-    let logout_card = make_power_card("󰍃", "Выход", "2", false, move || a2());
+    let logout_card = make_power_card("󰍃", tr("Logout", "Выход"), "2", false, move || a2());
     grid.append(&logout_card);
 
     // 3. Suspend
     let a3 = act_suspend.clone();
-    let sleep_card = make_power_card("󰤄", "Сон", "3", false, move || a3());
+    let sleep_card = make_power_card("󰤄", tr("Suspend", "Сон"), "3", false, move || a3());
     grid.append(&sleep_card);
 
     // 4. Reboot
     let a4 = act_reboot.clone();
-    let reboot_card = make_power_card("󰜉", "Перезагрузка", "4", false, move || a4());
+    let reboot_card = make_power_card("󰜉", tr("Reboot", "Перезагрузка"), "4", false, move || a4());
     grid.append(&reboot_card);
 
     // 5. Shutdown
     let a5 = act_poweroff.clone();
-    let poweroff_card = make_power_card("⏻", "Выключение", "5", true, move || a5());
+    let poweroff_card = make_power_card("⏻", tr("Power Off", "Выключение"), "5", true, move || a5());
     grid.append(&poweroff_card);
 
     modal.append(&grid);
 
     // Cancel Button
-    let cancel_btn = Button::with_label("Отмена (Esc)");
+    let cancel_btn = Button::with_label(tr("Cancel (Esc)", "Отмена (Esc)"));
     cancel_btn.add_css_class("cc-chip");
     cancel_btn.add_css_class("power-cancel-btn");
     cancel_btn.set_halign(Align::Center);

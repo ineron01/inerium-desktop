@@ -12,7 +12,7 @@ use gtk4::{
 };
 
 use crate::i18n::{Lang, tr};
-use crate::model::{SetupPaths, StepStatus, mark_setup_done};
+use crate::model::{SetupPaths, StepStatus, apply_system_language, mark_setup_done};
 use crate::system::{evaluate_steps, self_remove_onboarding};
 
 #[derive(Clone)]
@@ -50,7 +50,7 @@ pub fn build_main_window(
     autostart_mode: bool,
     start_on_integrations: bool,
 ) -> ApplicationWindow {
-    let lang = Lang::default();
+    let lang = Lang::get();
     let win = ApplicationWindow::builder()
         .application(app)
         .title(tr(lang, "Inerium Setup", "Настройка Inerium"))
@@ -158,10 +158,12 @@ fn build_shell(
 
     for (btn, target_lang) in [(btn_en, Lang::En), (btn_ru, Lang::Ru)] {
         let rebuild_ref = rebuild_ref.clone();
+        let paths_l = paths.clone();
         btn.connect_clicked(move |_| {
             if target_lang != lang
                 && let Some(ref f) = *rebuild_ref.borrow()
             {
+                let _ = apply_system_language(&paths_l, target_lang);
                 f(target_lang);
             }
         });
@@ -310,6 +312,7 @@ fn build_shell(
         let win_c = win.clone();
         let paths_c = paths.clone();
         finish_btn.connect_clicked(move |_| {
+            let _ = apply_system_language(&paths_c, lang);
             let _ = mark_setup_done(&paths_c);
             let _ = self_remove_onboarding(&paths_c);
             win_c.close();

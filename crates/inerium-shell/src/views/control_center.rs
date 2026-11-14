@@ -7,6 +7,7 @@ use gtk4::prelude::*;
 use gtk4::{Align, Box, Button, Grid, Label, Orientation, PolicyType, Scale, ScrolledWindow};
 
 use crate::hw;
+use inerium_i18n::{tr, tr_fmt, tr_plural};
 
 fn make_label(text: &str, css_class: &str, xalign: f32) -> Label {
     let lbl = Label::new(Some(text));
@@ -74,20 +75,31 @@ where
             lbl.set_label(&format!("󰚰 {}", info.total));
             btn.add_css_class("has-updates");
 
-            let mut tt = format!(
-                "Готово к обновлению: {} пакетов\n• Репозитории: {}\n• AUR: {}",
-                info.total, info.repo, info.aur
+            let pkg_word = tr_plural(info.total, "package", "packages", "пакет", "пакета", "пакетов");
+            let mut tt = tr_fmt!(
+                "Ready to update: {total} {pkg_word}\n• Repositories: {repo}\n• AUR: {aur}",
+                "Готово к обновлению: {total} {pkg_word}\n• Репозитории: {repo}\n• AUR: {aur}",
+                total = info.total,
+                pkg_word = pkg_word,
+                repo = info.repo,
+                aur = info.aur,
             );
             if !info.sample_packages.is_empty() {
-                tt.push_str("\n\nПакеты:\n  ");
+                tt.push_str(tr("\n\nPackages:\n  ", "\n\nПакеты:\n  "));
                 tt.push_str(&info.sample_packages.join(", "));
             }
-            tt.push_str("\n\nЛКМ: Обновить систему (paru)\nПКМ: Перепроверить");
+            tt.push_str(tr(
+                "\n\nLMB: Update system (paru)\nRMB: Recheck",
+                "\n\nЛКМ: Обновить систему (paru)\nПКМ: Перепроверить",
+            ));
             btn.set_tooltip_text(Some(&tt));
         } else {
             lbl.set_label("󰚰 0");
             btn.remove_css_class("has-updates");
-            btn.set_tooltip_text(Some("Все пакеты обновлены\nЛКМ: Обновить (paru)\nПКМ: Перепроверить"));
+            btn.set_tooltip_text(Some(tr(
+                "All packages up to date\nLMB: Update (paru)\nRMB: Recheck",
+                "Все пакеты обновлены\nЛКМ: Обновить (paru)\nПКМ: Перепроверить",
+            )));
         }
     }
 
@@ -148,7 +160,7 @@ where
     // Кнопка перехода в галерею обоев
     let wall_btn = Button::with_label("󰸉");
     wall_btn.add_css_class("cc-icon-btn");
-    wall_btn.set_tooltip_text(Some("Обои рабочего стола"));
+    wall_btn.set_tooltip_text(Some(tr("Desktop Wallpapers", "Обои рабочего стола")));
     wall_btn.set_valign(Align::Center);
     let n_cb_w = nav_cb.clone();
     wall_btn.connect_clicked(move |_| n_cb_w("wallpaper"));
@@ -169,12 +181,12 @@ where
                 idle_btn.set_label("󰒳");
                 idle_btn.remove_css_class("amber");
                 idle_btn.remove_css_class("on");
-                idle_btn.set_tooltip_text(Some("Автоблокировка: вкл"));
+                idle_btn.set_tooltip_text(Some(tr("Autolock: On", "Автоблокировка: вкл")));
             } else {
                 idle_btn.set_label("󰈈");
                 idle_btn.add_css_class("amber");
                 idle_btn.add_css_class("on");
-                idle_btn.set_tooltip_text(Some("Автоблокировка: выкл"));
+                idle_btn.set_tooltip_text(Some(tr("Autolock: Off", "Автоблокировка: выкл")));
             }
         })
     };
@@ -193,7 +205,7 @@ where
     // Кнопка блокировки
     let lock_btn = Button::with_label("󰌾");
     lock_btn.add_css_class("cc-icon-btn");
-    lock_btn.set_tooltip_text(Some("Заблокировать"));
+    lock_btn.set_tooltip_text(Some(tr("Lock", "Заблокировать")));
     lock_btn.set_valign(Align::Center);
     let c_cb = close_cb.clone();
     lock_btn.connect_clicked(move |_| {
@@ -208,7 +220,7 @@ where
     let power_btn = Button::with_label("⏻");
     power_btn.add_css_class("cc-icon-btn");
     power_btn.add_css_class("danger");
-    power_btn.set_tooltip_text(Some("Меню питания"));
+    power_btn.set_tooltip_text(Some(tr("Power menu", "Меню питания")));
     power_btn.set_valign(Align::Center);
     let n_cb = nav_cb.clone();
     power_btn.connect_clicked(move |_| {
@@ -264,7 +276,7 @@ where
         let more_btn = if has_more {
             let more = Button::with_label("›");
             more.add_css_class("cc-tile-more");
-            more.set_tooltip_text(Some("Подробнее"));
+            more.set_tooltip_text(Some(tr("Details", "Подробнее")));
             tile.append(&more);
             Some(more)
         } else {
@@ -283,8 +295,8 @@ where
     // 4 основных плитки (2x2 Grid)
     let (wifi_tile, wifi_btn, wifi_more, _wifi_ico, wifi_sub) = create_tile("󰤨", "Wi-Fi", "", true);
     let (bt_tile, bt_btn, bt_more, _bt_ico, bt_sub) = create_tile("󰂯", "Bluetooth", "blue", true);
-    let (dnd_tile, dnd_btn, _dnd_more, _dnd_ico, dnd_sub) = create_tile("󰂛", "Не беспокоить", "amber", false);
-    let (mic_tile, mic_btn, _mic_more, mic_ico, mic_sub) = create_tile("󰍬", "Микрофон", "red", false);
+    let (dnd_tile, dnd_btn, _dnd_more, _dnd_ico, dnd_sub) = create_tile("󰂛", tr("Do Not Disturb", "Не беспокоить"), "amber", false);
+    let (mic_tile, mic_btn, _mic_more, mic_ico, mic_sub) = create_tile("󰍬", tr("Microphone", "Микрофон"), "red", false);
 
     // Первоначальная и динамическая отрисовка плиток
     let update_tiles = {
@@ -307,44 +319,44 @@ where
             if wf {
                 wifi_tile.add_css_class("on");
                 if hw::is_hotspot_active() {
-                    wifi_sub.set_label("Точка доступа");
+                    wifi_sub.set_label(tr("Hotspot", "Точка доступа"));
                 } else if let Some(ref ssid) = hw::get_active_wifi_ssid() {
                     wifi_sub.set_label(ssid);
                 } else {
-                    wifi_sub.set_label("Включен");
+                    wifi_sub.set_label(tr("Connected", "Включен"));
                 }
             } else {
                 wifi_tile.remove_css_class("on");
-                wifi_sub.set_label("Выключен");
+                wifi_sub.set_label(tr("Disabled", "Выключен"));
             }
 
             let bt = *is_bt.borrow();
             if bt {
                 bt_tile.add_css_class("on");
-                bt_sub.set_label("Активен");
+                bt_sub.set_label(tr("Active", "Активен"));
             } else {
                 bt_tile.remove_css_class("on");
-                bt_sub.set_label("Выключен");
+                bt_sub.set_label(tr("Disabled", "Выключен"));
             }
 
             let dnd = *is_dnd.borrow();
             if dnd {
                 dnd_tile.add_css_class("on");
-                dnd_sub.set_label("Уведомления скрыты");
+                dnd_sub.set_label(tr("Notifications hidden", "Уведомления скрыты"));
             } else {
                 dnd_tile.remove_css_class("on");
-                dnd_sub.set_label("Выключено");
+                dnd_sub.set_label(tr("Off", "Выключено"));
             }
 
             let mm = *is_mic_muted.borrow();
             if mm {
                 mic_tile.add_css_class("on");
                 mic_ico.set_label("󰍭");
-                mic_sub.set_label("Выключен");
+                mic_sub.set_label(tr("Muted", "Выключен"));
             } else {
                 mic_tile.remove_css_class("on");
                 mic_ico.set_label("󰍬");
-                mic_sub.set_label("Включен");
+                mic_sub.set_label(tr("Active", "Включен"));
             }
         })
     };
@@ -432,7 +444,7 @@ where
 
     let vol_more = Button::with_label("›");
     vol_more.add_css_class("cc-slider-ico");
-    vol_more.set_tooltip_text(Some("Аудиоустройства"));
+    vol_more.set_tooltip_text(Some(tr("Audio Devices", "Аудиоустройства")));
     let n_cb_vol = nav_cb.clone();
     vol_more.connect_clicked(move |_| n_cb_vol("audio"));
     vol_row.append(&vol_more);
@@ -450,7 +462,7 @@ where
         let br_row = Box::new(Orientation::Horizontal, 6);
         let br_ico = Button::with_label("󰃠");
         br_ico.add_css_class("cc-slider-ico");
-        br_ico.set_tooltip_text(Some("Яркость экрана ноутбука"));
+        br_ico.set_tooltip_text(Some(tr("Laptop display brightness", "Яркость экрана ноутбука")));
         br_row.append(&br_ico);
 
         let cur_br = hw::get_laptop_brightness();
@@ -477,7 +489,7 @@ where
         let ext_row = Box::new(Orientation::Horizontal, 6);
         let ext_ico = Button::with_label("󰍹");
         ext_ico.add_css_class("cc-slider-ico");
-        ext_ico.set_tooltip_text(Some("Яркость внешнего монитора (DDC)"));
+        ext_ico.set_tooltip_text(Some(tr("External monitor brightness (DDC)", "Яркость внешнего монитора (DDC)")));
         ext_row.append(&ext_ico);
 
         let cur_ext = hw::get_cached_ddc_brightness();
@@ -517,11 +529,16 @@ where
     // 4. ПИТАНИЕ И ПРОФИЛИ
     // ---------------------------------------------------------
     let has_ppd = hw::has_power_profiles();
+    let has_fan_telem = hw::has_fan_telemetry();
     let has_ec = hw::has_msi_ec();
     let has_bat_thresh = hw::has_battery_threshold();
 
-    if has_ppd || has_ec || has_bat_thresh {
-        let pw_title = if has_ec { "ПИТАНИЕ И ОХЛАЖДЕНИЕ" } else { "ПИТАНИЕ" };
+    if has_ppd || has_fan_telem || has_bat_thresh {
+        let pw_title = if has_fan_telem {
+            tr("POWER & COOLING", "ПИТАНИЕ И ОХЛАЖДЕНИЕ")
+        } else {
+            tr("POWER", "ПИТАНИЕ")
+        };
         let pw_lbl = make_label(pw_title, "cc-label", 0.0);
         content.append(&pw_lbl);
     }
@@ -531,10 +548,10 @@ where
         seg.add_css_class("cc-seg");
         seg.set_homogeneous(true);
 
-        let eco_btn = Button::with_label("󰌪 Эконом");
+        let eco_btn = Button::with_label(&format!("󰌪 {}", tr("Eco", "Эконом")));
         eco_btn.add_css_class("eco");
-        let bal_btn = Button::with_label("󰾅 Баланс");
-        let turbo_btn = Button::with_label("󰓅 Турбо");
+        let bal_btn = Button::with_label(&format!("󰾅 {}", tr("Balance", "Баланс")));
+        let turbo_btn = Button::with_label(&format!("󰓅 {}", tr("Turbo", "Турбо")));
         turbo_btn.add_css_class("turbo");
 
         let cur_prof = hw::get_power_profile();
@@ -585,7 +602,7 @@ where
     }
 
     let mut update_fan_lbl_opt: Option<Rc<dyn Fn()>> = None;
-    if has_ec {
+    if has_fan_telem {
         // Colorless, subtle fan telemetry info with live refresh
         let fan_lbl = make_label("", "cc-meta", 0.5);
         fan_lbl.set_margin_top(2);
@@ -605,19 +622,46 @@ where
                         (Some(cr), Some(gr)) if cr > 0 && gr > 0 => {
                             format!("󰈐 Cooler Boost: CPU {} RPM  ·  GPU {} RPM", cr, gr)
                         }
-                        _ => "󰈐 Cooler Boost: максимальные обороты (100%)".to_string(),
+                        _ => tr(
+                            "󰈐 Cooler Boost: maximum speed (100%)",
+                            "󰈐 Cooler Boost: максимальные обороты (100%)",
+                        )
+                        .to_string(),
                     }
                 } else {
-                    match (cpu_rpm, gpu_rpm) {
-                        (Some(cr), Some(gr)) if cr > 0 && gr > 0 => {
-                            format!("Кулеры: CPU {}% ({} RPM)  ·  GPU {}% ({} RPM)", c_pct, cr, g_pct, gr)
+                    let mut parts = Vec::new();
+                    if let Some(cr) = cpu_rpm {
+                        if cr > 0 {
+                            if cpu_pct.is_some() {
+                                parts.push(format!("CPU {}% ({} RPM)", c_pct, cr));
+                            } else {
+                                parts.push(format!("Fan 1: {} RPM", cr));
+                            }
+                        } else if cpu_pct.is_some() {
+                            parts.push(format!("CPU {}%", c_pct));
                         }
-                        (Some(cr), _) if cr > 0 => {
-                            format!("Кулеры: CPU {}% ({} RPM)  ·  GPU {}%", c_pct, cr, g_pct)
+                    } else if cpu_pct.is_some() {
+                        parts.push(format!("CPU {}%", c_pct));
+                    }
+
+                    if let Some(gr) = gpu_rpm {
+                        if gr > 0 {
+                            if gpu_pct.is_some() {
+                                parts.push(format!("GPU {}% ({} RPM)", g_pct, gr));
+                            } else {
+                                parts.push(format!("Fan 2: {} RPM", gr));
+                            }
+                        } else if gpu_pct.is_some() {
+                            parts.push(format!("GPU {}%", g_pct));
                         }
-                        _ => {
-                            format!("Кулеры: CPU {}%  ·  GPU {}%", c_pct, g_pct)
-                        }
+                    } else if gpu_pct.is_some() {
+                        parts.push(format!("GPU {}%", g_pct));
+                    }
+
+                    if parts.is_empty() {
+                        tr("󰈨 Fans: active", "󰈨 Кулеры: активный режим").to_string()
+                    } else {
+                        format!("󰈨 {}: {}", tr("Fans", "Кулеры"), parts.join(" · "))
                     }
                 };
                 fan_lbl.set_label(&fan_str);
@@ -655,10 +699,10 @@ where
                 Rc::new(move || {
                     let active = *cb_active.borrow();
                     if active {
-                        cb_chip.set_label("󰈐 Cooler Boost: вкл");
+                        cb_chip.set_label(&format!("󰈐 {}: {}", tr("Cooler Boost", "Cooler Boost"), tr("on", "вкл")));
                         cb_chip.add_css_class("on");
                     } else {
-                        cb_chip.set_label("󰈐 Cooler Boost");
+                        cb_chip.set_label(&format!("󰈐 {}", tr("Cooler Boost", "Cooler Boost")));
                         cb_chip.remove_css_class("on");
                     }
                 })
@@ -691,10 +735,10 @@ where
                 Rc::new(move || {
                     let t = *bat_thresh.borrow();
                     if t < 100 {
-                        bat_chip.set_label(&format!("󱈑 Лимит заряда {}%", t));
+                        bat_chip.set_label(&format!("󱈑 {}: {}%", tr("Battery Limit", "Лимит заряда"), t));
                         bat_chip.add_css_class("on");
                     } else {
-                        bat_chip.set_label("󱈑 Заряд до 100%");
+                        bat_chip.set_label(&format!("󱈑 {}", tr("Charge to 100%", "Заряд до 100%")));
                         bat_chip.remove_css_class("on");
                     }
                 })
@@ -723,8 +767,8 @@ where
         let gpu_txt = Box::new(Orientation::Vertical, 0);
         gpu_txt.set_hexpand(true);
         gpu_txt.set_valign(Align::Center);
-        gpu_txt.append(&make_label("ГРАФИКА", "cc-label", 0.0));
-        let gpu_desc = make_label("Гибридная графика (iGPU + dGPU)", "cc-foot", 0.0);
+        gpu_txt.append(&make_label(tr("GRAPHICS", "ГРАФИКА"), "cc-label", 0.0));
+        let gpu_desc = make_label(tr("Hybrid graphics (iGPU + dGPU)", "Гибридная графика (iGPU + dGPU)"), "cc-foot", 0.0);
         gpu_txt.append(&gpu_desc);
         gpu_row.append(&gpu_txt);
 
@@ -737,17 +781,17 @@ where
         let cur_mode = hw::get_gpu_mode();
         if cur_mode == "integrated" {
             igpu_btn.add_css_class("active");
-            gpu_desc.set_label("Только встроенная графика (iGPU)");
+            gpu_desc.set_label(tr("Integrated graphics only (iGPU)", "Только встроенная графика (iGPU)"));
         } else {
             hybrid_btn.add_css_class("active");
-            gpu_desc.set_label("iGPU + дискретная GPU по требованию");
+            gpu_desc.set_label(tr("iGPU + discrete GPU on demand", "iGPU + дискретная GPU по требованию"));
         }
 
         let gpu_status = make_label("", "cc-status", 0.0);
         gpu_status.set_wrap(true);
         gpu_status.set_visible(false);
 
-        let reboot_btn = Button::with_label("󰜉  Перезагрузить сейчас");
+        let reboot_btn = Button::with_label(tr("󰜉  Reboot now", "󰜉  Перезагрузить сейчас"));
         reboot_btn.add_css_class("cc-chip");
         reboot_btn.add_css_class("on");
         reboot_btn.set_visible(false);
@@ -769,16 +813,16 @@ where
                 hyb_res.remove_css_class("active");
                 if target == "integrated" {
                     igpu_res.add_css_class("active");
-                    desc_res.set_label("Только встроенная графика (iGPU)");
+                    desc_res.set_label(tr("Integrated graphics only (iGPU)", "Только встроенная графика (iGPU)"));
                 } else {
                     hyb_res.add_css_class("active");
-                    desc_res.set_label("iGPU + дискретная GPU по требованию");
+                    desc_res.set_label(tr("iGPU + discrete GPU on demand", "iGPU + дискретная GPU по требованию"));
                 }
-                stat_res.set_label("󰄬 Готово. Режим применится после перезагрузки.");
+                stat_res.set_label(tr("󰄬 Ready. Mode will apply after reboot.", "󰄬 Готово. Режим применится после перезагрузки."));
                 stat_res.add_css_class("ok");
                 reboot_res.set_visible(true);
             } else {
-                stat_res.set_label("󰅙 Ошибка переключения envycontrol");
+                stat_res.set_label(tr("󰅙 Envycontrol switch error", "󰅙 Ошибка переключения envycontrol"));
                 stat_res.add_css_class("err");
             }
         });

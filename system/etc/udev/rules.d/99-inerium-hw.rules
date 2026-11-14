@@ -1,0 +1,28 @@
+# ============================================================================
+# Inerium Desktop Hardware Access Rules
+# Permits unprivileged users in group 'wheel' to manage battery thresholds,
+# Lenovo conservation mode, and MSI EC platform registers without root.
+# ============================================================================
+
+# 1. Battery Charge Thresholds for any ACPI battery (BAT*, BATT, CMB0, macsmc)
+ACTION=="add|bind", SUBSYSTEM=="power_supply", ATTR{type}=="Battery", TEST=="%S%p/charge_control_end_threshold", \
+    RUN+="/usr/bin/chgrp wheel %S%p/charge_control_end_threshold", \
+    RUN+="/usr/bin/chmod 0664 %S%p/charge_control_end_threshold"
+
+ACTION=="add|bind", SUBSYSTEM=="power_supply", ATTR{type}=="Battery", TEST=="%S%p/charge_control_start_threshold", \
+    RUN+="/usr/bin/chgrp wheel %S%p/charge_control_start_threshold", \
+    RUN+="/usr/bin/chmod 0664 %S%p/charge_control_start_threshold"
+
+ACTION=="add|bind", SUBSYSTEM=="power_supply", ATTR{type}=="Battery", TEST=="%S%p/charge_stop_threshold", \
+    RUN+="/usr/bin/chgrp wheel %S%p/charge_stop_threshold", \
+    RUN+="/usr/bin/chmod 0664 %S%p/charge_stop_threshold"
+
+# 2. Lenovo IdeaPad / Legion Conservation Mode
+ACTION=="add|bind", SUBSYSTEM=="platform", DRIVER=="ideapad_acpi", TEST=="%S%p/conservation_mode", \
+    RUN+="/usr/bin/chgrp wheel %S%p/conservation_mode", \
+    RUN+="/usr/bin/chmod 0664 %S%p/conservation_mode"
+
+# 3. MSI EC Platform Nodes
+ACTION=="add|bind", SUBSYSTEM=="platform", DRIVER=="msi-ec", \
+    RUN+="/usr/bin/chgrp -f wheel %S%p/cooler_boost %S%p/shift_mode %S%p/fan_mode %S%p/super_battery", \
+    RUN+="/usr/bin/chmod -f 0664 %S%p/cooler_boost %S%p/shift_mode %S%p/fan_mode %S%p/super_battery"

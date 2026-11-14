@@ -575,6 +575,9 @@ if [[ -d "$REPO_DIR/first-login.d" ]]; then
 fi
 install_root_if_changed 755 "$REPO_DIR/system/usr/local/bin/inerium-desktop-indexer" /usr/local/bin/inerium-desktop-indexer
 install_sudoers_template "$REPO_DIR/system/etc/sudoers.d/inerium-desktop-indexer.template" /etc/sudoers.d/inerium-desktop-indexer
+if [[ -f "$REPO_DIR/system/etc/udev/rules.d/99-inerium-hw.rules" ]]; then
+    install_root_if_changed 644 "$REPO_DIR/system/etc/udev/rules.d/99-inerium-hw.rules" /etc/udev/rules.d/99-inerium-hw.rules
+fi
 
 # ============================================================================
 # 4. Symlink ~/.config directories and Hyprland files

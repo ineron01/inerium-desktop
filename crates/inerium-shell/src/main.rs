@@ -197,6 +197,32 @@ fn main() {
         let guard = app.hold();
         Box::leak(Box::new(guard)); // Keep daemon held permanently
 
+        // Watch ~/.config/locale.conf for live language switches without relogin
+        if let Some(home) = env::var_os("HOME") {
+            let locale_conf = PathBuf::from(home).join(".config/locale.conf");
+            let gfile = gio::File::for_path(&locale_conf);
+            if let Ok(monitor) = gfile.monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
+                monitor.connect_changed(|_, _, _, event| {
+                    if matches!(
+                        event,
+                        gio::FileMonitorEvent::ChangesDoneHint
+                            | gio::FileMonitorEvent::Created
+                            | gio::FileMonitorEvent::MovedIn
+                    ) {
+                        inerium_i18n::Lang::reinit();
+                        STATE.with(|s| {
+                            let mut st = s.borrow_mut();
+                            if st.is_visible && !st.current_view.is_empty() {
+                                let cur = st.current_view.clone();
+                                show_view(&mut st, &cur);
+                            }
+                        });
+                    }
+                });
+                Box::leak(Box::new(monitor));
+            }
+        }
+
         let sock_path = get_sock_path();
         if sock_path.exists() {
             let _ = fs::remove_file(&sock_path);

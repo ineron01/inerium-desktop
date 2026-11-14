@@ -633,18 +633,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "io-lifetimes"
-version = "2.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06432fb54d3be7964ecd3649233cddf80db2832f47fec34c01f65b3d9d774983"
-
-[[package]]
-name = "itoa"
-version = "1.0.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bd1574e617a9a6c1f8f8181bd7e841e1f20e4277607ef28945765188d6284d4"
-
-[[package]]
 name = "inerium-greeter"
 version = "0.1.0"
 dependencies = [
@@ -656,6 +644,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "inerium-i18n"
+version = "0.1.0"
+
+[[package]]
 name = "inerium-setup"
 version = "0.1.0"
 dependencies = [
@@ -663,6 +655,7 @@ dependencies = [
  "gio",
  "glib",
  "gtk4",
+ "inerium-i18n",
  "serde",
  "serde_json",
  "vte4",
@@ -673,9 +666,11 @@ name = "inerium-shell"
 version = "0.1.0"
 dependencies = [
  "gdk4",
+ "gio",
  "glib",
  "gtk4",
  "gtk4-layer-shell",
+ "inerium-i18n",
  "serde",
  "serde_json",
 ]
@@ -688,6 +683,18 @@ dependencies = [
  "serde_json",
  "sha2",
 ]
+
+[[package]]
+name = "io-lifetimes"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06432fb54d3be7964ecd3649233cddf80db2832f47fec34c01f65b3d9d774983"
+
+[[package]]
+name = "itoa"
+version = "1.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bd1574e617a9a6c1f8f8181bd7e841e1f20e4277607ef28945765188d6284d4"
 
 [[package]]
 name = "khronos_api"

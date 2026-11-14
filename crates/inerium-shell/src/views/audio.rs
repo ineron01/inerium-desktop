@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use gtk4::prelude::*;
 use gtk4::{Box, Button, Label, Orientation, Scale, ScrolledWindow};
+use inerium_i18n::tr;
 
 use crate::hw;
 
@@ -18,19 +19,19 @@ where
 
     // Header
     let head = Box::new(Orientation::Horizontal, 8);
-    let back_btn = Button::with_label("‹ Назад");
+    let back_btn = Button::with_label(tr("‹ Back", "‹ Назад"));
     back_btn.add_css_class("back-btn");
     let n_cb = nav_cb.clone();
     back_btn.connect_clicked(move |_| n_cb("control"));
     head.append(&back_btn);
 
-    let title = Label::new(Some("Аудиоустройства"));
+    let title = Label::new(Some(tr("Audio Devices", "Аудиоустройства")));
     title.add_css_class("cc-host");
     title.set_hexpand(true);
     title.set_xalign(0.0);
     head.append(&title);
 
-    let pavu_btn = Button::with_label("󰕾 Микшер");
+    let pavu_btn = Button::with_label(tr("󰕾 Mixer", "󰕾 Микшер"));
     pavu_btn.add_css_class("cc-chip");
     let c_cb = close_cb.clone();
     pavu_btn.connect_clicked(move |_| {
@@ -70,7 +71,7 @@ where
     root.append(&vol_box);
 
     // Devices List
-    let list_title = Label::new(Some("УСТРОЙСТВА ВЫВОДА"));
+    let list_title = Label::new(Some(tr("OUTPUT DEVICES", "УСТРОЙСТВА ВЫВОДА")));
     list_title.add_css_class("cc-label");
     list_title.set_xalign(0.0);
     root.append(&list_title);
@@ -109,7 +110,7 @@ where
         txt.append(&name_lbl);
         inner.append(&txt);
 
-        let badge = Label::new(Some(if sink.is_default { "󰄬 Активен" } else { "" }));
+        let badge = Label::new(Some(if sink.is_default { tr("󰄬 Active", "󰄬 Активен") } else { "" }));
         badge.add_css_class("card-badge");
         inner.append(&badge);
 

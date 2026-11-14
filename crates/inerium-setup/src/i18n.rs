@@ -1,10 +1,8 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Lang {
-    #[default]
-    En,
-    Ru,
-}
+#[allow(unused_imports)]
+pub use inerium_i18n::{Lang, tr_fmt, tr_plural};
 
+/// Compatibility 3-argument translation function for existing inerium-setup UI modules.
+#[inline]
 pub const fn tr(lang: Lang, en: &'static str, ru: &'static str) -> &'static str {
     match lang {
         Lang::En => en,
