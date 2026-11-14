@@ -15,9 +15,6 @@ hl.bind(mainMod .. " + Space",   hl.dsp.exec_cmd("uwsm app -- rofi -show drun"))
 -- Центр управления
 hl.bind(mainMod .. " + A",       hl.dsp.exec_cmd(home .. "/.local/bin/inerium-popup control"))
 
--- Калькулятор
-hl.bind(mainMod .. " + Equal",   hl.dsp.exec_cmd("uwsm app -- rofi -show calc"))
-
 -- Переключение окон
 hl.bind(mainMod .. " + Tab",     hl.dsp.exec_cmd("uwsm app -- rofi -show window"))
 
