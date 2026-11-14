@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================================
-# inerium-desktop/bootstrap.sh — One-command TTY/DE bootstrap for Arch/CachyOS
+# inerium-shell/bootstrap.sh — One-command TTY/DE bootstrap for Arch/CachyOS
 # ============================================================================
 set -euo pipefail
 
-REPO_URL="${INERIUM_DESKTOP_REPO:-https://github.com/ineron01/inerium-desktop.git}"
-TARGET_DIR="${INERIUM_DESKTOP_DIR:-$HOME/Repos/inerium-desktop}"
+REPO_URL="${INERIUM_SHELL_REPO:-${INERIUM_DESKTOP_REPO:-https://github.com/ineron01/inerium-shell.git}}"
+TARGET_DIR="${INERIUM_SHELL_DIR:-${INERIUM_DESKTOP_DIR:-$HOME/Repos/inerium-shell}}"
 LOG_FILE="/tmp/inerium-install.log"
 DRY_RUN=0
 SKIP_PKGS=0
@@ -29,10 +29,10 @@ print_banner() {
             --padding "1 3" \
             --margin "1 0" \
             --bold \
-            "INERIUM DESKTOP" \
+            "INERIUM SHELL" \
             "Universal Arch / CachyOS Hyprland + Rust Installer"
     else
-        printf '\n=== INERIUM DESKTOP — Bootstrap ===\n\n'
+        printf '\n=== INERIUM SHELL — Bootstrap ===\n\n'
     fi
 }
 
@@ -107,7 +107,7 @@ mkdir -p "$(dirname "$TARGET_DIR")"
 if [[ -d "$TARGET_DIR/.git" ]]; then
     run_quiet_step "Updating repository at $TARGET_DIR..." git -C "$TARGET_DIR" pull --ff-only
 else
-    run_quiet_step "Cloning inerium-desktop repository..." git clone "$REPO_URL" "$TARGET_DIR"
+    run_quiet_step "Cloning inerium-shell repository..." git clone "$REPO_URL" "$TARGET_DIR"
 fi
 
 if [[ ! -t 0 && -t 1 && -r /dev/tty ]]; then

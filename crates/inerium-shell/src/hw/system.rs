@@ -139,6 +139,7 @@ fn ensure_wallpapers_dir_populated(dir: &Path) {
         let home = home_dir();
         let fallback_sources = [
             home.join("Pictures/Wallpapers"),
+            home.join("Repos/inerium-shell/assets/wallpapers"),
             home.join("Repos/inerium-desktop/assets/wallpapers"),
             PathBuf::from("/usr/share/backgrounds"),
         ];

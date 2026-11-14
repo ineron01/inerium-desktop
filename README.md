@@ -1,4 +1,4 @@
-# inerium-desktop
+# inerium-shell
 
 Universal CachyOS / Arch Linux desktop environment built around **Hyprland (Lua API)**, **Waybar**, **Rofi**, **Mako**, **SwayOSD**, **Dolphin KIO**, and a native **Rust / GTK4** utility suite themed in the **Inerium Dragon** palette.
 
@@ -22,12 +22,12 @@ Works identically from a **fresh TTY** or **inside any existing desktop environm
 
 **Short URL (via GitHub Pages):**
 ```bash
-curl -sL ineron01.github.io/inerium-desktop | bash
+curl -sL ineron01.github.io/inerium-shell | bash
 ```
 
 **Direct GitHub Raw URL (Alternative / Fallback):**
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop/main/bootstrap.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-shell/main/bootstrap.sh)"
 ```
 
 - **Interactive TUI:** Auto-detects hardware (GPU, laptop battery/chassis, existing Display Manager) and offers quick choices.
@@ -38,13 +38,13 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop
 ### 2. Silent / Automated Run (for scripts or SSH)
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop/main/bootstrap.sh)" -- -y
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-shell/main/bootstrap.sh)" -- -y
 ```
 
 ### 3. Developer / Source Compilation
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-desktop/main/bootstrap.sh)" -- --from-source
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ineron01/inerium-shell/main/bootstrap.sh)" -- --from-source
 ```
 
 ### 4. Local Run from Cloned Repo

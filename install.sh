@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# inerium-desktop/install.sh — Universal Arch/CachyOS Hyprland + Rust Installer
+# inerium-shell/install.sh — Universal Arch/CachyOS Hyprland + Rust Installer
 # ============================================================================
 set -euo pipefail
 
@@ -17,7 +17,7 @@ WORKSPACES_PER_MON=""
 BACKUP_STAMP="$(date +%Y%m%d%H%M%S)"
 LOG_FILE="/tmp/inerium-install.log"
 
-RELEASE_BASE_URL="${INERIUM_RELEASE_URL:-https://github.com/ineron01/inerium-desktop/releases/latest/download}"
+RELEASE_BASE_URL="${INERIUM_RELEASE_URL:-https://github.com/ineron01/inerium-shell/releases/latest/download}"
 BIN_ARCHIVE="inerium-binaries-linux-x86_64.tar.gz"
 BIN_SHA="inerium-binaries-linux-x86_64.tar.gz.sha256"
 
@@ -71,8 +71,8 @@ if [[ -n "$WORKSPACES_PER_MON" && ! "$WORKSPACES_PER_MON" =~ ^[1-9]$ ]]; then
     exit 1
 fi
 
-log()  { printf '[inerium-desktop] %s\n' "$*"; }
-warn() { printf '[inerium-desktop] WARNING: %s\n' "$*" >&2; }
+log()  { printf '[inerium-shell] %s\n' "$*"; }
+warn() { printf '[inerium-shell] WARNING: %s\n' "$*" >&2; }
 
 has_gum() {
     command -v gum >/dev/null 2>&1 && [[ -t 0 && -t 1 ]]
@@ -120,8 +120,8 @@ run_step() {
     if use_tui; then
         printf '\n=== %s (%s) ===\n' "$title" "$(date '+%H:%M:%S')" >> "$LOG_FILE"
         if ! gum spin --spinner dot --title "$title" -- bash -c '"$@" >> "$0" 2>&1' "$LOG_FILE" "$@"; then
-            printf '\n[inerium-desktop] ERROR during: %s\n' "$title" >&2
-            printf '[inerium-desktop] Last 25 lines of %s:\n' "$LOG_FILE" >&2
+            printf '\n[inerium-shell] ERROR during: %s\n' "$title" >&2
+            printf '[inerium-shell] Last 25 lines of %s:\n' "$LOG_FILE" >&2
             tail -n 25 "$LOG_FILE" >&2 || true
             return 1
         fi
