@@ -11,6 +11,8 @@ import sys
 import glob
 import re
 import shutil
+import subprocess
+import tempfile
 
 TARGET_DIR = "/usr/local/share/applications"
 SOURCE_DIRS = ["/usr/share/applications"]
@@ -41,7 +43,7 @@ LAT_TO_CYR_RULES = [
     ('ph', 'ф'), ('th', 'т'), ('oo', 'у'), ('ee', 'и'),
     ('a', 'а'), ('b', 'б'), ('c', 'к'), ('d', 'д'), ('e', 'е'),
     ('f', 'ф'), ('g', 'г'), ('h', 'х'), ('i', 'и'), ('j', 'дж'),
-    ('k', 'к'), ('l', 'л'), ('m', 'ь'), ('n', 'н'), ('o', 'о'),
+    ('k', 'к'), ('l', 'л'), ('m', 'м'), ('n', 'н'), ('o', 'о'),
     ('p', 'п'), ('q', 'к'), ('r', 'р'), ('s', 'с'), ('t', 'т'),
     ('u', 'у'), ('v', 'в'), ('w', 'в'), ('x', 'кс'), ('y', 'и'),
     ('z', 'з')
@@ -290,9 +292,16 @@ def process_desktop_file(src_path: str, dst_path: str, use_existing_keywords: bo
                 return True
     except Exception:
         pass
-    tmp_path = dst_path + ".tmp"
-    with open(tmp_path, 'w', encoding='utf-8') as f:
-        f.writelines(new_lines)
+    # Случайное имя + O_EXCL (mkstemp): заранее подложенный симлинк "<файл>.tmp"
+    # больше не может перенаправить запись в произвольный файл.
+    fd, tmp_path = tempfile.mkstemp(prefix=".inerium-", suffix=".tmp",
+                                    dir=os.path.dirname(dst_path))
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.writelines(new_lines)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
     owner = None
     try:
         st = os.stat(dst_path)
@@ -308,6 +317,60 @@ def process_desktop_file(src_path: str, dst_path: str, use_existing_keywords: bo
             pass
     return True
 
+def update_desktop_database(path: str) -> None:
+    try:
+        subprocess.run(["update-desktop-database", path],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    except OSError:  # не установлен или недоступен в PATH
+        pass
+
+def process_user_dir(user_dir: str) -> None:
+    for fpath in glob.glob(os.path.join(user_dir, "*.desktop")):
+        if os.path.isfile(fpath) and not os.path.islink(fpath):
+            # Файлы обрабатываются на месте, их Keywords уже сгенерированы нами —
+            # пересобираем только из имён, иначе старый мусор сохранится навсегда
+            process_desktop_file(fpath, fpath, use_existing_keywords=False)
+    update_desktop_database(user_dir)
+
+def run_as_owner(user_dir: str, func) -> None:
+    """Выполняет func(user_dir) с правами владельца домашней папки.
+    Если скрипт запущен не от root — просто обрабатывает только свою папку."""
+    home = user_dir[: -len("/.local/share/applications")]
+    try:
+        st = os.lstat(home)
+    except OSError:
+        return
+
+    if os.geteuid() != 0:
+        if st.st_uid == os.geteuid():
+            func(user_dir)
+        return
+
+    if st.st_uid == 0:
+        return  # root-owned home under /home — не трогаем
+
+    pid = os.fork()
+    if pid == 0:
+        code = 0
+        try:
+            import pwd
+            try:
+                name = pwd.getpwuid(st.st_uid).pw_name
+                os.initgroups(name, st.st_gid)
+            except KeyError:
+                os.setgroups([])
+            os.setgid(st.st_gid)
+            os.setuid(st.st_uid)
+            # После сброса прав проверки (симлинки, владельцы) выполняет ядро
+            if not os.path.islink(user_dir) and os.path.isdir(user_dir):
+                func(user_dir)
+        except Exception as e:
+            print(f"inerium-desktop-indexer: {user_dir}: {e}", file=sys.stderr)
+            code = 1
+        finally:
+            os._exit(code)
+    os.waitpid(pid, 0)
+
 def index_all():
     os.makedirs(TARGET_DIR, exist_ok=True)
     count = 0
@@ -322,14 +385,11 @@ def index_all():
             if process_desktop_file(fpath, dst_path):
                 count += 1
 
-    # 2. Also process any user-specific desktop files in ~/.local/share/applications/ in-place
+    # 2. Also process any user-specific desktop files in ~/.local/share/applications/ in-place.
+    # Каждая пользовательская папка обрабатывается с правами её владельца, а не root:
+    # иначе любой локальный пользователь мог заставить root писать в чужие файлы.
     for USER_DIR in USER_DIRS:
-        for fpath in glob.glob(os.path.join(USER_DIR, "*.desktop")):
-            # Process in-place if readable and writable
-            if os.path.isfile(fpath) and not os.path.islink(fpath):
-                # Файлы обрабатываются на месте, их Keywords уже сгенерированы нами —
-                # пересобираем только из имён, иначе старый мусор сохранится навсегда
-                process_desktop_file(fpath, fpath, use_existing_keywords=False)
+        run_as_owner(USER_DIR, process_user_dir)
 
     # 3. Clean up deleted applications from TARGET_DIR
     for dst_file in glob.glob(os.path.join(TARGET_DIR, "*.desktop")):
@@ -342,9 +402,7 @@ def index_all():
                 pass
 
     # 4. Update desktop databases
-    os.system(f"update-desktop-database {TARGET_DIR} >/dev/null 2>&1")
-    for USER_DIR in USER_DIRS:
-        os.system(f"update-desktop-database {USER_DIR} >/dev/null 2>&1")
+    update_desktop_database(TARGET_DIR)
 
     print(f"inerium-desktop-indexer: Successfully indexed {count} applications.")
 

@@ -4,8 +4,8 @@ Universal CachyOS / Arch Linux desktop environment built around **Hyprland (Lua 
 
 ## Structure
 
-- `Cargo.toml` — Rust workspace (`inerium-tools`, `inerium-shell`, `inerium-greeter`, `dolphin-converter`)
-- `standalone/inerium-polkit/` — Standalone Polkit agent (`gtk4 0.9` / `relm4 0.9`, kept separate to avoid `links = "gtk-4"` conflict with `gtk4 0.11`)
+- `Cargo.toml` — Rust workspace (`inerium-i18n`, `inerium-tools`, `inerium-shell`, `inerium-greeter`, `inerium-setup`, `dolphin-converter`)
+- `standalone/inerium-polkit/` — Standalone Polkit agent (fork of [soteria](https://github.com/ImVaskel/soteria), Apache-2.0; `gtk4 0.9` / `relm4 0.9`, kept separate to avoid `links = "gtk-4"` conflict with `gtk4 0.11`)
 - `config/` — Symlinkable user configurations (`hypr`, `waybar`, `rofi`, `mako`, `swayosd`, `fish`, `kitty`, `alacritty`, `uwsm`, `systemd/user`, `qt5ct`, `qt6ct`, `gtk-3.0`, `gtk-4.0`)
 - `local/` — User scripts (`~/.local/bin/`) and Dolphin KIO service menus
 - `system/` — System-wide `inerium-desktop-indexer`, `greetd` templates (`--with-greeter`), and `sudoers.d` rule
