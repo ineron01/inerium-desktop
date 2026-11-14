@@ -28,6 +28,7 @@ pipewire-alsa
 wireplumber
 pavucontrol
 networkmanager
+nm-connection-editor
 iw
 dnsmasq
 bluez
@@ -54,7 +55,6 @@ pandoc-cli
 typst
 libreoffice-fresh
 onnxruntime-cpu
-kde-cli-tools
 python
 
 # Theming, Fonts & Build Dependencies

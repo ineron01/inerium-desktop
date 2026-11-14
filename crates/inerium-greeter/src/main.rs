@@ -570,16 +570,17 @@ fn trigger_login(state: Rc<RefCell<GreeterState>>) {
     let demo = state.borrow().demo;
     let username = state.borrow().user.clone();
     let cmd = session.cmd.clone();
+    let env = session.env.clone();
     let session_name = session.name.clone();
     let state_path = state.borrow().state_path;
 
     std::thread::spawn(move || {
         let auth_result = if demo {
             let mut client = greetd::DemoGreetd::new();
-            greetd::authenticate(&mut client, &username, &password, &cmd)
+            greetd::authenticate(&mut client, &username, &password, &cmd, &env)
         } else {
             match greetd::RealGreetd::connect() {
-                Ok(mut client) => greetd::authenticate(&mut client, &username, &password, &cmd),
+                Ok(mut client) => greetd::authenticate(&mut client, &username, &password, &cmd, &env),
                 Err(e) => Err(e),
             }
         };

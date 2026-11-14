@@ -140,6 +140,7 @@ pub fn authenticate(
     username: &str,
     password: &str,
     cmd: &[String],
+    env: &[String],
 ) -> Result<(), String> {
     let mut resp = client.request(&Request::CreateSession { username })?;
 
@@ -156,7 +157,7 @@ pub fn authenticate(
         Response::Success => {
             let start_resp = client.request(&Request::StartSession {
                 cmd,
-                env: &[],
+                env,
             })?;
             match start_resp {
                 Response::Success => Ok(()),
@@ -199,7 +200,8 @@ mod tests {
     fn test_demo_authenticate_success() {
         let mut client = DemoGreetd::new();
         let cmd = vec!["start-hyprland".to_string()];
-        let res = authenticate(&mut client, "testuser", "demo", &cmd);
+        let env = vec!["XDG_SESSION_TYPE=wayland".to_string()];
+        let res = authenticate(&mut client, "testuser", "demo", &cmd, &env);
         assert!(res.is_ok());
     }
 
@@ -207,7 +209,8 @@ mod tests {
     fn test_demo_authenticate_wrong_password() {
         let mut client = DemoGreetd::new();
         let cmd = vec!["start-hyprland".to_string()];
-        let res = authenticate(&mut client, "testuser", "wrong", &cmd);
+        let env = vec!["XDG_SESSION_TYPE=wayland".to_string()];
+        let res = authenticate(&mut client, "testuser", "wrong", &cmd, &env);
         assert_eq!(res.unwrap_err(), "Неверный пароль");
     }
 
@@ -263,6 +266,7 @@ mod tests {
             let msg3 = recv_msg(&mut stream);
             assert_eq!(msg3["type"], "start_session");
             assert_eq!(msg3["cmd"], serde_json::json!(["start-hyprland"]));
+            assert_eq!(msg3["env"], serde_json::json!(["XDG_SESSION_TYPE=wayland"]));
 
             send_msg(&mut stream, &serde_json::json!({ "type": "success" }));
         });
@@ -273,7 +277,8 @@ mod tests {
 
         let mut client = RealGreetd::connect().expect("Connection to mock greetd unix socket failed");
         let cmd = vec!["start-hyprland".to_string()];
-        let res = authenticate(&mut client, "testuser", "correct_pass", &cmd);
+        let env = vec!["XDG_SESSION_TYPE=wayland".to_string()];
+        let res = authenticate(&mut client, "testuser", "correct_pass", &cmd, &env);
 
         assert!(res.is_ok());
         srv_handle.join().unwrap();

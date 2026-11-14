@@ -5,6 +5,7 @@ use std::path::Path;
 pub struct Session {
     pub name: String,
     pub cmd: Vec<String>,
+    pub env: Vec<String>,
 }
 
 const SESSION_DIRS: &[&str] = &["/usr/share/wayland-sessions"];
@@ -83,8 +84,12 @@ pub fn read_sessions_filtered(hide: &[String], default_session: &str) -> Vec<Ses
             if hide.iter().any(|h| h == fname) {
                 continue;
             }
+            let file_stem = file_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
             if let Ok(content) = fs::read_to_string(&file_path)
-                && let Some(session) = parse_desktop_file(&content)
+                && let Some(session) = parse_desktop_file(&content, file_stem)
                 && !hide.iter().any(|h| h == &session.name)
             {
                 sessions.push(session);
@@ -105,16 +110,23 @@ pub fn read_sessions_filtered(hide: &[String], default_session: &str) -> Vec<Ses
         sessions.push(Session {
             name: "Hyprland".to_string(),
             cmd: vec!["/usr/bin/start-hyprland".to_string()],
+            env: vec![
+                "XDG_SESSION_TYPE=wayland".to_string(),
+                "XDG_CURRENT_DESKTOP=Hyprland".to_string(),
+                "XDG_SESSION_DESKTOP=Hyprland".to_string(),
+                "DESKTOP_SESSION=hyprland".to_string(),
+            ],
         });
     }
 
     sessions
 }
 
-fn parse_desktop_file(content: &str) -> Option<Session> {
+fn parse_desktop_file(content: &str, file_stem: &str) -> Option<Session> {
     let mut in_entry = false;
     let mut name = None;
     let mut exec = None;
+    let mut desktop_names = None;
     let mut hidden = false;
 
     for raw_line in content.lines() {
@@ -135,6 +147,10 @@ fn parse_desktop_file(content: &str) -> Option<Session> {
             if exec.is_none() {
                 exec = Some(val.trim().to_string());
             }
+        } else if let Some(val) = line.strip_prefix("DesktopNames=") {
+            if desktop_names.is_none() {
+                desktop_names = Some(val.trim().to_string());
+            }
         } else if line == "Hidden=true" || line == "NoDisplay=true" {
             hidden = true;
         }
@@ -148,7 +164,21 @@ fn parse_desktop_file(content: &str) -> Option<Session> {
         (Some(n), Some(e)) => {
             let cmd = parse_exec_line(&e);
             if !cmd.is_empty() {
-                Some(Session { name: n, cmd })
+                let mut env = vec!["XDG_SESSION_TYPE=wayland".to_string()];
+                if let Some(dn) = desktop_names {
+                    env.push(format!("XDG_CURRENT_DESKTOP={dn}"));
+                    let primary = dn.split(':').next().unwrap_or(&dn).trim();
+                    if !primary.is_empty() {
+                        env.push(format!("XDG_SESSION_DESKTOP={primary}"));
+                    }
+                } else {
+                    env.push(format!("XDG_CURRENT_DESKTOP={n}"));
+                    env.push(format!("XDG_SESSION_DESKTOP={n}"));
+                }
+                if !file_stem.is_empty() {
+                    env.push(format!("DESKTOP_SESSION={file_stem}"));
+                }
+                Some(Session { name: n, cmd, env })
             } else {
                 None
             }
@@ -181,10 +211,28 @@ Name=Hyprland (UWSM-Waybar)
 Comment=Hyprland with Waybar shell
 Exec=env HYPR_PROFILE=waybar /usr/bin/start-hyprland
 Type=Application
+DesktopNames=Hyprland
 "#;
-        let s = parse_desktop_file(content).unwrap();
+        let s = parse_desktop_file(content, "hyprland-waybar").unwrap();
         assert_eq!(s.name, "Hyprland (UWSM-Waybar)");
         assert_eq!(s.cmd, vec!["env", "HYPR_PROFILE=waybar", "/usr/bin/start-hyprland"]);
+        assert!(s.env.contains(&"XDG_SESSION_TYPE=wayland".to_string()));
+        assert!(s.env.contains(&"XDG_CURRENT_DESKTOP=Hyprland".to_string()));
+        assert!(s.env.contains(&"XDG_SESSION_DESKTOP=Hyprland".to_string()));
+        assert!(s.env.contains(&"DESKTOP_SESSION=hyprland-waybar".to_string()));
+
+        let gnome_content = r#"
+[Desktop Entry]
+Name=GNOME
+Exec=/usr/bin/gnome-session
+DesktopNames=GNOME
+"#;
+        let gnome_s = parse_desktop_file(gnome_content, "gnome").unwrap();
+        assert_eq!(gnome_s.name, "GNOME");
+        assert_eq!(gnome_s.cmd, vec!["/usr/bin/gnome-session"]);
+        assert!(gnome_s.env.contains(&"XDG_SESSION_TYPE=wayland".to_string()));
+        assert!(gnome_s.env.contains(&"XDG_CURRENT_DESKTOP=GNOME".to_string()));
+        assert!(gnome_s.env.contains(&"DESKTOP_SESSION=gnome".to_string()));
 
         let nodisplay = r#"
 [Desktop Entry]
@@ -192,6 +240,6 @@ Name=Hyprland
 Exec=/usr/bin/start-hyprland
 NoDisplay=true
 "#;
-        assert!(parse_desktop_file(nodisplay).is_none());
+        assert!(parse_desktop_file(nodisplay, "hyprland").is_none());
     }
 }
